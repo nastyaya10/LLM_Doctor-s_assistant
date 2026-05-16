@@ -2,10 +2,10 @@
     const messagesContainer = document.getElementById('chatMessages');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
-    const quickBtns = document.querySelectorAll('.quick-btn');
     let isWaiting = false;
 
     function scrollToBottom() { messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+
     function createMessage(role, text) {
         const div = document.createElement('div');
         div.className = `message ${role}`;
@@ -14,6 +14,7 @@
             : `<div class="avatar-icon">🩺</div><div class="bubble">${text}</div>`;
         return div;
     }
+
     function addTyping() {
         const typing = document.createElement('div');
         typing.className = 'message assistant';
@@ -22,7 +23,11 @@
         messagesContainer.appendChild(typing);
         scrollToBottom();
     }
-    function removeTyping() { const t = document.getElementById('typingIndicator'); if (t) t.remove(); }
+
+    function removeTyping() {
+        const t = document.getElementById('typingIndicator');
+        if (t) t.remove();
+    }
 
     function generateReply(msg) {
         const lower = msg.toLowerCase();
@@ -60,11 +65,13 @@
     }
 
     sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
-    messageInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(messageInput.value); } });
-    quickBtns.forEach(btn => btn.addEventListener('click', () => {
-        const q = btn.getAttribute('data-query');
-        if (q && !isWaiting) sendMessage(q);
-    }));
+    messageInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendMessage(messageInput.value);
+        }
+    });
+
     messageInput.focus();
     scrollToBottom();
 })();
