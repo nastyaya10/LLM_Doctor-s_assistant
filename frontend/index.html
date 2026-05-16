@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedAI – ассистент врача</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="chat-wrapper">
+    <div class="chat-header">
+        <div class="ai-avatar">🧠</div>
+        <div class="header-text">
+            <h2>MedAI Assistant</h2>
+            <div class="status"><span class="status-dot"></span> Онлайн · конфиденциально</div>
+        </div>
+        <div class="conf-badge">🔒 HIPAA</div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div class="message assistant">
+            <div class="avatar-icon">🩺</div>
+            <div class="bubble">
+                Здравствуйте, коллега. Я MedAI — ваш ассистент для клинических вопросов, дифференциальной диагностики,
+                интерпретации анализов и рекомендаций. Чем могу помочь?
+            </div>
+        </div>
+    </div>
+
+    <div class="quick-actions" id="quickActions">
+        <button class="quick-btn" data-query="Дифференциальный диагноз при боли в грудной клетке">🫁 Диф. диагноз
+        </button>
+        <button class="quick-btn" data-query="Интерпретация ОАК: лейкоцитоз, нейтрофилез">🔬 ОАК интерпретация</button>
+        <button class="quick-btn" data-query="Рекомендации по антибиотикотерапии при внебольничной пневмонии">💊
+            Антибиотики
+        </button>
+        <button class="quick-btn" data-query="Нормы дозировки препаратов при ХБП">📋 Дозировки</button>
+    </div>
+
+    <div class="chat-input-area">
+        <div class="input-wrapper">
+            <input type="text" id="messageInput" placeholder="Опишите клинический случай..." autocomplete="off"/>
+        </div>
+        <button class="send-btn" id="sendBtn">➤</button>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
