@@ -1,0 +1,17 @@
+# Переменные окружения (токены!)
+.env
+
+# Виртуальное окружение Python
+venv/
+.venv/
+
+# Кэш Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Файлы IDE и ОС
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
