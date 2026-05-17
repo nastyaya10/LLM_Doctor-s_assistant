@@ -1,0 +1,102 @@
+[
+  {
+    "query": "что делать при высоком давлении",
+    "expected_chunk_id": "hypertension_1",
+    "query_type": "conversational"
+  },
+  {
+    "query": "устойчивое повышение АД и риск поражения органов мишеней",
+    "expected_chunk_id": "hypertension_1",
+    "query_type": "abbreviation"
+  },
+  {
+    "query": "какие подходы к контролю сахара при диабете второго типа, включая HbA1c, питание и препараты первой линии",
+    "expected_chunk_id": "diabetes_1",
+    "query_type": "long"
+  },
+  {
+    "query": "метформин когда назначают",
+    "expected_chunk_id": "diabetes_1",
+    "query_type": "short"
+  },
+  {
+    "query": "одышка у курильщика, хронический кашель, нужна спирометрия",
+    "expected_chunk_id": "copd_1",
+    "query_type": "medical_terms"
+  },
+  {
+    "query": "ХОБЛ базисное лечение бронходилататоры вакцинация отказ от курения",
+    "expected_chunk_id": "copd_1",
+    "query_type": "abbreviation"
+  },
+  {
+    "query": "перекосило лицо и плохо говорит что это может быть",
+    "expected_chunk_id": "stroke_1",
+    "query_type": "conversational"
+  },
+  {
+    "query": "внезапная слабость в руке нарушение речи реперфузионная терапия",
+    "expected_chunk_id": "stroke_1",
+    "query_type": "medical_terms"
+  },
+  {
+    "query": "свистящее дыхание и приступы удушья по ночам",
+    "expected_chunk_id": "asthma_1",
+    "query_type": "synonym_paraphrase"
+  },
+  {
+    "query": "ингаляционные препараты при бронхиальной астме и план действий при обострении",
+    "expected_chunk_id": "asthma_1",
+    "query_type": "long"
+  },
+  {
+    "query": "сниженная СКФ больше трех месяцев альбуминурия",
+    "expected_chunk_id": "ckd_1",
+    "query_type": "abbreviation"
+  },
+  {
+    "query": "как замедлить ухудшение функции почек при хронической болезни",
+    "expected_chunk_id": "ckd_1",
+    "query_type": "synonym_paraphrase"
+  },
+  {
+    "query": "лихорадка кашель мокрота боль в груди рентген",
+    "expected_chunk_id": "pneumonia_1",
+    "query_type": "short"
+  },
+  {
+    "query": "внебольничная пневмония выбор антибиотика по тяжести состояния",
+    "expected_chunk_id": "pneumonia_1",
+    "query_type": "medical_terms"
+  },
+  {
+    "query": "давящая боль за грудиной при нагрузке проходит в покое",
+    "expected_chunk_id": "ischemic_heart_1",
+    "query_type": "conversational"
+  },
+  {
+    "query": "ИБС нагрузочные тесты ЭКГ профилактика сердечно сосудистых событий",
+    "expected_chunk_id": "ischemic_heart_1",
+    "query_type": "abbreviation"
+  },
+  {
+    "query": "головная боль с тошнотой и светобоязнью приступами",
+    "expected_chunk_id": "migraine_1",
+    "query_type": "synonym_paraphrase"
+  },
+  {
+    "query": "мигрень аура профилактическая терапия при частых атаках",
+    "expected_chunk_id": "migraine_1",
+    "query_type": "medical_terms"
+  },
+  {
+    "query": "жжение вверху живота быстрое насыщение тяжесть после еды",
+    "expected_chunk_id": "gastritis_1",
+    "query_type": "conversational"
+  },
+  {
+    "query": "диспепсия тревожные признаки потеря веса анемия дисфагия",
+    "expected_chunk_id": "gastritis_1",
+    "query_type": "medical_terms"
+  }
+]

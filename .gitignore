@@ -1,17 +1,16 @@
-# Переменные окружения (токены!)
-.env
-
-# Виртуальное окружение Python
-venv/
-.venv/
-
-# Кэш Python
-__pycache__/
-*.pyc
-*.pyo
-
-# Файлы IDE и ОС
-.vscode/
-.idea/
 .DS_Store
-Thumbs.db
+.idea/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Hugging Face / model caches should stay outside git.
+.cache/
+models/
+
+# Local notebooks and temporary outputs.
+*.ipynb_checkpoints/
