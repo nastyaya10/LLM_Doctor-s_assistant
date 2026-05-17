@@ -2,74 +2,122 @@
     const messagesContainer = document.getElementById('chatMessages');
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
-    let isWaiting = false;
+    const quickBtns = document.querySelectorAll('.quick-btn');
 
-    function scrollToBottom() { messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+    let isWaitingForResponse = false;
 
-    function createMessage(role, text) {
-        const div = document.createElement('div');
-        div.className = `message ${role}`;
-        div.innerHTML = role === 'user'
-            ? `<div class="bubble">${text}</div><div class="avatar-icon">👤</div>`
-            : `<div class="avatar-icon">🩺</div><div class="bubble">${text}</div>`;
-        return div;
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    function addTyping() {
-        const typing = document.createElement('div');
-        typing.className = 'message assistant';
-        typing.id = 'typingIndicator';
-        typing.innerHTML = `<div class="avatar-icon">🩺</div><div class="bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
-        messagesContainer.appendChild(typing);
+    function createMessageElement(role, text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar-icon';
+        avatar.textContent = role === 'user' ? '👤' : '🩺';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+
+        if (role === 'user') {
+            messageDiv.appendChild(bubble);
+            messageDiv.appendChild(avatar);
+        } else {
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(bubble);
+        }
+
+        return messageDiv;
+    }
+
+    function addTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message assistant';
+        typingDiv.id = 'typingIndicator';
+        typingDiv.innerHTML = `
+            <div class="avatar-icon">🩺</div>
+            <div class="bubble" style="padding: 14px 18px;">
+                <div class="typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(typingDiv);
         scrollToBottom();
     }
 
-    function removeTyping() {
-        const t = document.getElementById('typingIndicator');
-        if (t) t.remove();
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) indicator.remove();
     }
 
-    function generateReply(msg) {
-        const lower = msg.toLowerCase();
-        if (lower.includes('дифференциальный диагноз') || lower.includes('боль в грудной'))
-            return '🔍 Диф.диагноз боли в грудной клетке:\n1. ОКС\n2. ТЭЛА\n3. Расслоение аорты\n4. Перикардит\n5. Пневмоторакс\nРекомендовано: ЭКГ, тропонины, D-димер, рентген ОГК.';
-        if (lower.includes('оак') || lower.includes('лейкоцитоз'))
-            return '🩸 ОАК: лейкоцитоз+нейтрофилез – вероятна бактериальная инфекция. Оцените сдвиг формулы, исключите стресс-лейкоцитоз. Назначьте СРБ, прокальцитонин.';
-        if (lower.includes('антибиотик') || lower.includes('пневмония'))
-            return '💊 Внебольничная пневмония:\n- Амоксициллин 1г 3р/сут\n- или макролид\n- при риске резистентности – амоксициллин/клавуланат.';
-        if (lower.includes('дозировк') || lower.includes('хбп'))
-            return '📋 Дозировки при ХБП:\n- Метформин: СКФ<30 противопоказан\n- Эноксапарин: снижение дозы на 50% при СКФ<30\nПроверьте СКФ пациента.';
-        if (lower.includes('привет') || lower.includes('здравствуй'))
-            return 'Здравствуйте! Готов помочь с клиническими вопросами.';
-        return '📌 Рекомендую:\n- Полный анамнез\n- Физикальное обследование\n- Лабораторные тесты\nУточните запрос.';
+    async function getAIResponse(message) {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        if (!response.ok) throw new Error('Ошибка сервера');
+        const data = await response.json();
+        return data.reply;
     }
 
-    function sendMessage(text) {
-        if (!text.trim() || isWaiting) return;
-        messagesContainer.appendChild(createMessage('user', text));
+    async function sendMessage(text) {
+        const trimmed = text.trim();
+        if (!trimmed || isWaitingForResponse) return;
+
+        // Сообщение пользователя
+        const userMsg = createMessageElement('user', trimmed);
+        messagesContainer.appendChild(userMsg);
+        scrollToBottom();
         messageInput.value = '';
-        scrollToBottom();
-        isWaiting = true;
+
+        // Блокируем ввод
+        isWaitingForResponse = true;
         sendBtn.disabled = true;
         messageInput.disabled = true;
-        addTyping();
-        setTimeout(() => {
-            removeTyping();
-            messagesContainer.appendChild(createMessage('assistant', generateReply(text)));
+        addTypingIndicator();
+
+        try {
+            const reply = await getAIResponse(trimmed);
+            removeTypingIndicator();
+            const assistantMsg = createMessageElement('assistant', reply);
+            messagesContainer.appendChild(assistantMsg);
             scrollToBottom();
-            isWaiting = false;
+        } catch (error) {
+            removeTypingIndicator();
+            const errorMsg = createMessageElement('assistant', '⚠️ Не удалось получить ответ от модели. Проверьте сервер.');
+            messagesContainer.appendChild(errorMsg);
+            scrollToBottom();
+        } finally {
+            isWaitingForResponse = false;
             sendBtn.disabled = false;
             messageInput.disabled = false;
             messageInput.focus();
-        }, 1400);
+        }
     }
 
-    sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
-    messageInput.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+    sendBtn.addEventListener('click', () => {
+        sendMessage(messageInput.value);
+    });
+
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage(messageInput.value);
         }
+    });
+
+    quickBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const query = btn.getAttribute('data-query');
+            if (query && !isWaitingForResponse) {
+                sendMessage(query);
+            }
+        });
     });
 
     messageInput.focus();
