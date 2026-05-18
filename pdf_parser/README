@@ -1,0 +1,3 @@
+запуск start_pdf.py:
+
+для всех pdf файлов из assets создается json файл в output
