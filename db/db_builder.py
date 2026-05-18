@@ -2,24 +2,54 @@ import os
 import sys
 import json
 import subprocess
-import numpy as np
+
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+except ImportError:
+    pass
+
 import faiss
 from sentence_transformers import SentenceTransformer
 
-# Добавляем родительскую директорию в sys.path для импорта chunking.chunker
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+DB_DIR = os.path.dirname(__file__)
+sys.path.insert(0, DB_DIR)
 
 from chunking.chunker import append_chunks_to_json
 
 # Пути
-PDF_PARSER_SCRIPT = os.path.join("pdf_parser", "start_pdf.py")
-PDF_OUTPUT_DIR = os.path.join("pdf_parser", "output")
-ALL_CHUNKS_JSON = "all_chunks.json"
-FAISS_INDEX_PATH = "faiss_index.bin"
-METADATA_PATH = "chunks_metadata.json"
+PDF_PARSER_SCRIPT = os.path.join(DB_DIR, "start_pdf.py")
+PDF_OUTPUT_DIR = os.path.join(DB_DIR, "output")
+ALL_CHUNKS_JSON = os.path.join(DB_DIR, "all_chunks.json")
+FAISS_INDEX_PATH = os.path.join(DB_DIR, "faiss_index.bin")
+METADATA_PATH = os.path.join(DB_DIR, "chunks_metadata.json")
 
 # Модель для эмбеддингов
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
+
+
+def load_existing_chunks():
+    if not os.path.exists(ALL_CHUNKS_JSON):
+        return []
+    with open(ALL_CHUNKS_JSON, "r", encoding="utf-8") as f:
+        chunks = json.load(f)
+    if not isinstance(chunks, list):
+        return []
+    return chunks
+
+
+def get_json_titles(input_path):
+    with open(input_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if isinstance(data, list):
+        return {item.get("title") for item in data if isinstance(item, dict) and item.get("title")}
+    if isinstance(data, dict) and "articles" in data:
+        return {item.get("title") for item in data["articles"] if isinstance(item, dict) and item.get("title")}
+    if isinstance(data, dict) and data.get("title"):
+        return {data["title"]}
+    return set()
 
 
 def run_pdf_parser():
@@ -41,7 +71,7 @@ def run_pdf_parser():
 
 
 def chunk_all_json_files():
-    """Применяет chunking ко всем JSON из pdf_parser/output и сохраняет в общий файл."""
+    """Применяет chunking ко всем JSON из output и сохраняет в общий файл."""
     if not os.path.isdir(PDF_OUTPUT_DIR):
         raise FileNotFoundError(f"Директория {PDF_OUTPUT_DIR} не найдена.")
 
@@ -53,11 +83,16 @@ def chunk_all_json_files():
     if not json_files:
         raise FileNotFoundError(f"В папке {PDF_OUTPUT_DIR} нет JSON-файлов.")
 
-    # Удаляем старый общий файл, чтобы начать заново
-    if os.path.exists(ALL_CHUNKS_JSON):
-        os.remove(ALL_CHUNKS_JSON)
+    existing_chunks = load_existing_chunks()
+    processed_titles = {chunk.get("title") for chunk in existing_chunks if chunk.get("title")}
 
+    added_files = 0
     for input_path in json_files:
+        json_titles = get_json_titles(input_path)
+        if json_titles and json_titles.issubset(processed_titles):
+            print(f"Уже обработан, пропускаем: {input_path}")
+            continue
+
         print(f"Обработка файла: {input_path}")
         append_chunks_to_json(
             input_file_path=input_path,
@@ -66,10 +101,16 @@ def chunk_all_json_files():
             overlap=100,
             text_key="text",
             title_key="title",
-            tables_key=None,
+            tables_key="tables",
             table_insertion_method="append"
         )
-    print(f"Все чанки сохранены в {ALL_CHUNKS_JSON}")
+        processed_titles.update(json_titles)
+        added_files += 1
+
+    if added_files == 0:
+        print("Новых JSON-файлов для чанкинга нет.")
+    else:
+        print(f"Все чанки сохранены в {ALL_CHUNKS_JSON}")
 
 
 def build_faiss_index():
