@@ -26,7 +26,8 @@ scores, indices = self.faiss_index.search(query_emb, limit)
 8. Результаты от разных вариантов запроса объединяются.
 9. Дубликаты удаляются по FAISS index.
 10. Оставляются только chunks со score выше `SIMILARITY_THRESHOLD`.
-11. Результаты сортируются по `score` по убыванию.
+11. Если включен reranker, найденные chunks пересортировываются через CrossEncoder.
+12. Итоговые результаты возвращаются пользователю.
 
 ## Входные данные
 
@@ -61,6 +62,7 @@ debug_info
 
 ```python
 score
+rerank_score
 text
 title
 global_chunk_index
@@ -89,7 +91,7 @@ retrieve(query: str) -> RetrievalResult
 - Rewrite;
 - HyDE.
 
-В текущей версии работает локально, без OpenAI и без API-ключей.
+По умолчанию пытается использовать Gemini API через `GEMINI_API_KEY`. Если ключ не задан или Gemini недоступен, автоматически используется локальный rule-based fallback.
 
 ### `RetrievedChunk`
 
@@ -106,6 +108,16 @@ retrieve(query: str) -> RetrievalResult
 ### `_search_variant()`
 
 Выполняет FAISS search для одного варианта запроса.
+
+### `_rerank_results()`
+
+Пересортировывает найденные chunks через `CrossEncoder`. На вход подаются пары:
+
+```python
+[query, chunk_text]
+```
+
+Reranker возвращает отдельный `rerank_score`, который используется для финальной сортировки.
 
 ### `_load_faiss_index()`
 
@@ -170,7 +182,7 @@ Rewrite = улучшить сам вопрос
 HyDE = создать псевдо-документ, похожий на возможный ответ
 ```
 
-В текущем коде оба метода реализованы rule-based: через регулярные выражения и словарь медицинских терминов. Внешние API-ключи не используются.
+В текущем коде оба метода сначала пробуют Gemini API (`gemini-2.5-flash`). Если Gemini недоступен, используется rule-based реализация через регулярные выражения и словарь медицинских терминов.
 
 ## Embedding, Retrieval, Vector DB и Reranking
 
@@ -192,7 +204,22 @@ Retrieval — это поиск релевантных чанков по пол�
 
 ### Reranking
 
-Reranking в этом компоненте не реализован. Сейчас результаты сортируются по score из FAISS. При необходимости reranker можно добавить отдельным этапом после `retrieve()`.
+Reranking в этом компоненте реализован через:
+
+```text
+BAAI/bge-reranker-v2-m3
+```
+
+FAISS сначала быстро находит кандидатов по embedding similarity. Затем reranker точнее оценивает пары `query + chunk` и пересортировывает найденные chunks.
+
+В результате у chunk есть два score:
+
+```text
+score         = FAISS/vector-search score
+rerank_score = CrossEncoder/reranker score
+```
+
+Итоговая сортировка выполняется по `rerank_score`, если reranker включен.
 
 ## Как встроить в проект
 
@@ -202,6 +229,18 @@ Reranking в этом компоненте не реализован. Сейча
 from medical_rag_retriever import MedicalRAGRetriever
 
 retriever = MedicalRAGRetriever()
+```
+
+Reranker включен по умолчанию в консольном запуске. В коде его можно включить или отключить явно:
+
+```python
+retriever = MedicalRAGRetriever(use_reranker=True)
+```
+
+или:
+
+```python
+retriever = MedicalRAGRetriever(use_reranker=False)
 ```
 
 На каждый пользовательский вопрос вызывать:
@@ -235,3 +274,57 @@ prompt = f"""
 
 Важно: `MedicalRAGRetriever()` не нужно создавать на каждый запрос, потому что он загружает FAISS index и embedding model. Лучше держать один экземпляр retriever-а как singleton или глобальный объект приложения.
 
+## Консольный запуск
+
+Для работы Gemini Rewrite/HyDE нужно указать ключ Google AI Studio:
+
+```bash
+export GEMINI_API_KEY="your_api_key"
+```
+
+Можно также положить ключ в `.env`:
+
+```text
+GEMINI_API_KEY=your_api_key
+```
+
+Файл `.env` должен лежать в корне проекта рядом с `medical_rag_retriever.py`.
+Пример формата есть в `.env.example`. Сам `.env` добавлен в `.gitignore`.
+
+Код также поддерживает файл `.env.py`, если ключ уже был сохранен под таким именем. Но предпочтительный вариант — обычный `.env`.
+
+Запуск интерактивного режима:
+
+```bash
+python medical_rag_retriever.py
+```
+
+После запуска программа один раз загрузит FAISS index и `BAAI/bge-m3`, затем будет ждать запросы из консоли:
+
+```text
+query> часто хочу пить и сахар высокий что это может быть
+```
+
+Для выхода:
+
+```text
+exit
+```
+
+В debug-строке видно, что реально сработало для Rewrite и HyDE:
+
+```text
+rewrite=gemini, hyde=gemini, gemini_model=gemini-2.5-flash
+```
+
+Если Gemini недоступен, будет:
+
+```text
+rewrite=fallback, hyde=fallback, gemini_error=...
+```
+
+Если `gemini-2.5-flash` временно перегружен и возвращает `503 UNAVAILABLE`, код делает retry и пробует fallback-модель `gemini-2.0-flash`. Модель можно переопределить через:
+
+```text
+GEMINI_MODEL=gemini-2.0-flash
+```
