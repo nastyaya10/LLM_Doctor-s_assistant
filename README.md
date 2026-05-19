@@ -50,11 +50,17 @@ RAG_CHUNKS_PATH=db/all_chunks.json
 RAG_METADATA_PATH=db/chunks_metadata.json
 RAG_NEIGHBOR_RADIUS=1
 RAG_MAX_CONTEXT_CHARS=30000
+RAG_USE_RERANKER=1
+LOG_RERANKER_IO=1
 LOG_RAG_CONTEXT=1
 HOST=0.0.0.0
 PORT=8000
 OPEN_BROWSER=0
 ```
+
+Ретривер использует те же настройки Yandex/OpenAI-compatible LLM, что и агент:
+`API_KEY`, `BASE_URL`, `MODEL`, `FOLDER_ID`. Если `API_KEY` не задан, Rewrite/HyDE
+автоматически работают через локальный fallback.
 
 Для Docker обычно достаточно примонтировать серверную папку с базой в `/app/db`
 и задать:

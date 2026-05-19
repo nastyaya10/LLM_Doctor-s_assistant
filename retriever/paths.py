@@ -7,6 +7,19 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def load_dotenv_if_available() -> None:
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+
+    load_dotenv(PROJECT_ROOT / ".env", override=False)
+    load_dotenv(PROJECT_ROOT / ".env.py", override=False)
+
+
+load_dotenv_if_available()
+
+
 def env_path(name: str, default: Path) -> Path:
     value = os.getenv(name)
     if not value:
