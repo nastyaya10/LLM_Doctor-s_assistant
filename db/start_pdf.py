@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 from parse_pdf import parse_pdf_to_json
@@ -9,7 +10,18 @@ OUTPUT_DIR = DB_DIR / "output"
 PDF_PATTERN = "*.pdf"
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Parse all PDF files in db/assets.")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Rebuild JSON files even when they already exist.",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     pdf_files = sorted(ASSETS_DIR.glob(PDF_PATTERN))
 
     if not pdf_files:
@@ -20,7 +32,7 @@ def main() -> int:
 
     for pdf_path in pdf_files:
         json_path = OUTPUT_DIR / f"{pdf_path.stem}.json"
-        if json_path.exists():
+        if json_path.exists() and not args.force:
             print(f"Already parsed, skip: {pdf_path.name}")
             continue
 

@@ -9,6 +9,7 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
+.cache/
 
 # Файлы IDE и ОС
 .vscode/
