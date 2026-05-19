@@ -16,3 +16,7 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Локальные исходники/артефакты сборки базы из PDF
+db/assets/
+db/output/

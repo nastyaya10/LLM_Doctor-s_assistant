@@ -2,6 +2,7 @@ import http.server
 import socketserver
 import webbrowser
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -61,14 +62,20 @@ class ChatAPIHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    PORT = 8000
+    HOST = os.getenv("HOST", "")
+    PORT = int(os.getenv("PORT", "8000"))
+    OPEN_BROWSER = os.getenv("OPEN_BROWSER", "0").lower() in ("1", "true", "yes")
+
     if not FRONTEND_DIR.exists():
         print(f"Ошибка: папка {FRONTEND_DIR} не найдена.")
         sys.exit(1)
 
-    with socketserver.TCPServer(("", PORT), ChatAPIHandler) as httpd:
-        print(f"Сервер с агентом запущен на http://localhost:{PORT}")
-        webbrowser.open(f"http://localhost:{PORT}")
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer((HOST, PORT), ChatAPIHandler) as httpd:
+        display_host = HOST or "localhost"
+        print(f"Сервер с агентом запущен на http://{display_host}:{PORT}")
+        if OPEN_BROWSER:
+            webbrowser.open(f"http://localhost:{PORT}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

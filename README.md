@@ -3,12 +3,29 @@
 Проект состоит из двух основных частей:
 
 - веб-чат с LLM-ассистентом;
-- локальная сборка базы документов из PDF: парсинг, чанкинг, FAISS-индекс.
+- готовая локальная RAG-база документов: чанки JSON + FAISS-индекс.
+
+В репозитории хранятся только файлы, нужные для запуска сайта:
+
+```text
+db/all_chunks.json
+db/faiss_index.bin
+db/chunks_metadata.json
+```
+
+PDF-файлы и промежуточные JSON из `db/assets/` и `db/output/` считаются локальными
+файлами сборки базы и не нужны для деплоя.
 
 ## Установка
 
 ```bash
 pip install -r requirements.txt
+```
+
+Зависимости для парсинга PDF и пересборки базы вынесены отдельно:
+
+```bash
+pip install -r requirements-db-build.txt
 ```
 
 ## Переменные окружения
@@ -34,6 +51,9 @@ RAG_METADATA_PATH=db/chunks_metadata.json
 RAG_NEIGHBOR_RADIUS=1
 RAG_MAX_CONTEXT_CHARS=30000
 LOG_RAG_CONTEXT=1
+HOST=0.0.0.0
+PORT=8000
+OPEN_BROWSER=0
 ```
 
 Для Docker обычно достаточно примонтировать серверную папку с базой в `/app/db`
@@ -55,6 +75,8 @@ python main.py
 http://localhost:8000
 ```
 
+На сервере приложение слушает `HOST` и `PORT` из `.env`.
+
 ## Сборка локальной базы документов
 
 Положите PDF-файлы в:
@@ -67,6 +89,12 @@ db/assets/
 
 ```bash
 python db/db_builder.py
+```
+
+Перед этим установите зависимости для сборки:
+
+```bash
+pip install -r requirements-db-build.txt
 ```
 
 Pipeline:
