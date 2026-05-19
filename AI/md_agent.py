@@ -1,8 +1,17 @@
 import os
 import sys
 import time
+from pathlib import Path
+
 from dotenv import load_dotenv
 from openai import OpenAI
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from retriever import MedicalRAGRetriever
+from retriever.context_builder import RetrievalContextBuilder
 
 load_dotenv()
 
@@ -10,6 +19,7 @@ api_key = os.getenv("API_KEY")
 folder_id = os.getenv("FOLDER_ID")
 base_url = os.getenv("BASE_URL", "https://ai.api.cloud.yandex.net/v1")
 model_name = os.getenv("MODEL", "yandexgpt/rc")
+log_rag_context = os.getenv("LOG_RAG_CONTEXT", "1").lower() not in ("0", "false", "no")
 
 if model_name.startswith("gpt://"):
     model = model_name
@@ -31,45 +41,54 @@ client = OpenAI(
 )
 
 
-def load_markdown(file_path: str) -> str:
-    """Загружает Markdown-файл и возвращает его содержимое."""
-    print(f"[DEBUG] Загрузка файла: {file_path}")
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        print(f"[DEBUG] Файл загружен, длина: {len(content)} символов")
-        return content
-    except FileNotFoundError:
-        print(f"Файл {file_path} не найден.")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Ошибка при чтении файла: {e}")
-        sys.exit(1)
+_retriever: MedicalRAGRetriever | None = None
+_context_builder: RetrievalContextBuilder | None = None
 
 
-def build_system_prompt(md_content: str) -> str:
-    if len(md_content) > 30_000:
-        print("[WARN] Файл очень большой, возможна медленная работа или ошибка контекста.")
+def get_retriever() -> MedicalRAGRetriever:
+    global _retriever
+    if _retriever is None:
+        print("[RAG] Инициализация retriever...")
+        _retriever = MedicalRAGRetriever()
+        print("[RAG] Retriever готов.")
+    return _retriever
+
+
+def get_context_builder() -> RetrievalContextBuilder:
+    global _context_builder
+    if _context_builder is None:
+        print("[RAG] Загрузка чанков для сборки контекста...")
+        _context_builder = RetrievalContextBuilder()
+        print("[RAG] Сборщик контекста готов.")
+    return _context_builder
+
+
+def build_system_prompt() -> str:
     return (
         "Ты – ИИ-ассистент, который отвечает на вопросы пользователя "
-        "ИСКЛЮЧИТЕЛЬНО на основе содержимого предоставленного Markdown-файла.\n"
+        "ИСКЛЮЧИТЕЛЬНО на основе следующей информации из базы медицинских документов.\n"
         "Ты не имеешь права использовать свои внешние знания или додумывать что-либо.\n"
-        "Если ответа нет в файле, честно скажи, что в файле такой информации нет.\n\n"
-        f"Содержимое файла:\n{md_content}"
+        "Если ответа нет в найденных фрагментах, честно скажи, что в них такой информации нет.\n"
+        "По возможности указывай источник по названию документа из контекста."
     )
 
 
-class MedicalAgent:
-    """RAG-агент, отвечающий только по содержимому MD-файла."""
+def log_context(context: str) -> None:
+    if not log_rag_context:
+        return
 
-    def __init__(self, file_path: str = None):
-        if file_path is None:
-            file_path = os.getenv("MD_FILE", "sample.md")
-        self.file_path = file_path
-        print(f"[Agent] Инициализация с файлом: {file_path}")
-        md_content = load_markdown(file_path)
-        self.system_prompt = build_system_prompt(md_content)
-        self.messages = [{"role": "system", "content": self.system_prompt}]
+    print("\n[RAG] Контекст, отправленный в LLM:")
+    print(context)
+    print("[RAG] Конец контекста\n")
+
+
+class MedicalAgent:
+    """RAG-агент, отвечающий только по найденному контексту."""
+
+    def __init__(self):
+        print("[Agent] Инициализация RAG-агента.")
+        self.system_prompt = build_system_prompt()
+        self.messages = []
         print("[Agent] Агент готов к работе.")
 
     def generate_response(self, user_message: str) -> str:
@@ -77,26 +96,46 @@ class MedicalAgent:
         if not user_message.strip():
             return "Пожалуйста, введите текст вопроса."
 
-        self.messages.append({"role": "user", "content": user_message})
         print(f"[Agent] Запрос: {user_message[:80]}...")
 
         start_time = time.time()
         try:
+            retrieval_result = get_retriever().retrieve(user_message)
+            context = get_context_builder().build_context(retrieval_result)
+
+            if not context:
+                return "В базе знаний не найдено релевантных фрагментов для ответа."
+
+            log_context(context)
+
+            user_prompt = (
+                "Следующая информация:\n"
+                f"{context}\n\n"
+                "Ответь на вопрос пользователя исключительно на основе информации выше.\n"
+                "Вопрос пользователя:\n"
+                f"{user_message}"
+            )
+
+            messages = [
+                {"role": "system", "content": self.system_prompt},
+                *self.messages,
+                {"role": "user", "content": user_prompt},
+            ]
+
             response = client.chat.completions.create(
                 model=model,
-                messages=self.messages,
+                messages=messages,
                 temperature=0.0,
             )
             elapsed = time.time() - start_time
             print(f"[Agent] Ответ получен за {elapsed:.2f} сек.")
             answer = response.choices[0].message.content
+            self.messages.append({"role": "user", "content": user_message})
             self.messages.append({"role": "assistant", "content": answer})
             return answer
         except Exception as e:
             elapsed = time.time() - start_time
             print(f"[Agent] Ошибка через {elapsed:.2f} сек: {e}")
-            # Убираем последний вопрос, чтобы не засорять историю
-            self.messages.pop()
             return f"Ошибка при обращении к языковой модели: {e}"
 
 

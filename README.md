@@ -20,10 +20,28 @@ API_KEY=your_api_key
 BASE_URL=https://ai.api.cloud.yandex.net/v1
 MODEL=yandexgpt/rc
 FOLDER_ID=your_folder_id
-MD_FILE=line_notes.md
 ```
 
 Для другого OpenAI-compatible API поменяйте `BASE_URL` и `MODEL`.
+
+Настройки путей для RAG-ретривера, если база лежит не в стандартной папке `db/`:
+
+```env
+RAG_DB_DIR=db
+RAG_FAISS_INDEX_PATH=db/faiss_index.bin
+RAG_CHUNKS_PATH=db/all_chunks.json
+RAG_METADATA_PATH=db/chunks_metadata.json
+RAG_NEIGHBOR_RADIUS=1
+RAG_MAX_CONTEXT_CHARS=30000
+LOG_RAG_CONTEXT=1
+```
+
+Для Docker обычно достаточно примонтировать серверную папку с базой в `/app/db`
+и задать:
+
+```env
+RAG_DB_DIR=/app/db
+```
 
 ## Запуск сайта
 
