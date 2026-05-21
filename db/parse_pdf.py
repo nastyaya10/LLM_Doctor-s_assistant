@@ -15,6 +15,14 @@ PROJECT_DIR = PARSER_DIR.parent
 DEFAULT_INPUT = PARSER_DIR / "assets" / "1596_1582.pdf"
 DEFAULT_OUTPUT_DIR = PARSER_DIR / "output"
 LOCAL_CACHE_DIR = PROJECT_DIR / ".cache"
+DEFAULT_OCR_DPI = int(os.getenv("PARSER_OCR_DPI", "200"))
+USE_EASYOCR_FALLBACK = os.getenv("PARSER_USE_EASYOCR", "1").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+MAX_EASYOCR_PAGES = int(os.getenv("PARSER_EASYOCR_MAX_PAGES", "6"))
 
 
 def configure_ssl_certificates() -> None:
@@ -82,11 +90,90 @@ OCR_GARBAGE_RE = re.compile(
     r")"
 )
 
+LATIN_TO_CYRILLIC = str.maketrans(
+    {
+        "A": "А",
+        "B": "В",
+        "C": "С",
+        "E": "Е",
+        "H": "Н",
+        "K": "К",
+        "M": "М",
+        "O": "О",
+        "P": "Р",
+        "T": "Т",
+        "X": "Х",
+        "Y": "У",
+        "a": "а",
+        "c": "с",
+        "e": "е",
+        "o": "о",
+        "p": "р",
+        "x": "х",
+        "y": "у",
+    }
+)
+
+NUMERIC_OCR_REPLACEMENTS = str.maketrans(
+    {
+        "O": "0",
+        "О": "0",
+        "o": "0",
+        "о": "0",
+        "I": "1",
+        "l": "1",
+        "|": "1",
+        "З": "3",
+        "з": "3",
+        "S": "5",
+        "s": "5",
+        "Б": "6",
+    }
+)
+
 
 def normalize_text(text: str) -> str:
     text = re.sub(r"<!--\s*image\s*-->", " ", text, flags=re.IGNORECASE)
     text = html.unescape(text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_ocr_text(text: str) -> str:
+    text = html.unescape(text or "")
+    text = re.sub(r"<!--\s*image\s*-->", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"([№N])\s*[_\-]?\s*(\d)", r"№ \2", text)
+
+    # Fix latin homoglyphs only inside words that are mostly Cyrillic.
+    def fix_mixed_cyrillic_word(match: re.Match[str]) -> str:
+        word = match.group(0)
+        cyrillic_count = len(CYRILLIC_RE.findall(word))
+        if cyrillic_count >= max(1, len(word) // 3):
+            return word.translate(LATIN_TO_CYRILLIC)
+        return word
+
+    text = re.sub(r"[A-Za-zА-Яа-яЁё]{3,}", fix_mixed_cyrillic_word, text)
+
+    # Fix common OCR mistakes in numeric fragments without touching normal words.
+    def fix_numeric_fragment(match: re.Match[str]) -> str:
+        fragment = match.group(0)
+        return re.sub(
+            r"\S+",
+            lambda token_match: (
+                token_match.group(0)
+                if re.match(r"[A-Za-zА-Яа-яЁё]\d", token_match.group(0))
+                else token_match.group(0).translate(NUMERIC_OCR_REPLACEMENTS)
+            ),
+            fragment,
+        )
+
+    text = re.sub(
+        r"(?<![A-Za-zА-Яа-яЁё])[\dOoОоIl|ЗзSsБ][\dOoОоIl|ЗзSsБ\s.,:/\\\-]{1,}"
+        r"(?=[\dOoОоIl|ЗзSsБ]|$)",
+        fix_numeric_fragment,
+        text,
+    )
+    text = re.sub(r"(?<=\d)\s+([.,:/\\-])\s+(?=\d)", r"\1", text)
+    return normalize_text(text)
 
 
 def text_quality_score(text: str) -> float:
@@ -121,7 +208,7 @@ def extract_text_with_pypdf(input_path: Path) -> str:
 
     reader = PdfReader(str(input_path))
     page_texts = [page.extract_text() or "" for page in reader.pages]
-    return normalize_text("\n".join(page_texts))
+    return normalize_ocr_text("\n".join(page_texts))
 
 
 def extract_text_with_pymupdf(input_path: Path) -> str:
@@ -135,7 +222,7 @@ def extract_text_with_pymupdf(input_path: Path) -> str:
         for page in document:
             page_texts.append(page.get_text("text") or "")
 
-    return normalize_text("\n".join(page_texts))
+    return normalize_ocr_text("\n".join(page_texts))
 
 
 def extract_text_with_pdfplumber(input_path: Path) -> str:
@@ -147,9 +234,11 @@ def extract_text_with_pdfplumber(input_path: Path) -> str:
     page_texts = []
     with pdfplumber.open(str(input_path)) as pdf:
         for page in pdf.pages:
-            page_texts.append(page.extract_text() or "")
+            page_texts.append(
+                page.extract_text(x_tolerance=1, y_tolerance=3, layout=False) or ""
+            )
 
-    return normalize_text("\n".join(page_texts))
+    return normalize_ocr_text("\n".join(page_texts))
 
 
 def extract_tables_with_pdfplumber(input_path: Path) -> list[dict[str, Any]]:
@@ -179,7 +268,7 @@ def extract_tables_with_pdfplumber(input_path: Path) -> list[dict[str, Any]]:
     return tables
 
 
-def render_pdf_pages(input_path: Path, output_dir: Path, dpi: int = 160) -> list[Path]:
+def render_pdf_pages(input_path: Path, output_dir: Path, dpi: int = DEFAULT_OCR_DPI) -> list[Path]:
     try:
         import fitz
     except ImportError:
@@ -227,7 +316,7 @@ def extract_paddle_text_from_result(result: Any) -> str:
         texts = None
 
     if isinstance(texts, list):
-        return normalize_text(" ".join(str(text) for text in texts if str(text).strip()))
+        return normalize_ocr_text(" ".join(str(text) for text in texts if str(text).strip()))
 
     if hasattr(result, "json"):
         json_value = result.json() if callable(result.json) else result.json
@@ -240,11 +329,11 @@ def extract_paddle_text_from_result(result: Any) -> str:
     if isinstance(result, dict):
         texts = result.get("rec_texts") or result.get("texts") or []
         if isinstance(texts, list):
-            return normalize_text(" ".join(str(text) for text in texts))
+            return normalize_ocr_text(" ".join(str(text) for text in texts))
         return ""
 
     if isinstance(result, list) and result and isinstance(result[0], dict):
-        return normalize_text(
+        return normalize_ocr_text(
             " ".join(extract_paddle_text_from_result(item) for item in result)
         )
 
@@ -274,7 +363,7 @@ def extract_paddle_text_from_result(result: Any) -> str:
                 line_texts.append(payload)
         page_texts.append(" ".join(line_texts))
 
-    return normalize_text("\n".join(page_texts))
+    return normalize_ocr_text("\n".join(page_texts))
 
 
 def create_paddle_ocr() -> Any:
@@ -337,12 +426,50 @@ def extract_text_with_paddleocr(input_path: Path) -> str:
                 return ""
             page_texts.append(extract_paddle_text_from_result(result))
 
-    return normalize_text("\n".join(page_texts))
+    return normalize_ocr_text("\n".join(page_texts))
+
+
+def extract_text_with_easyocr(input_path: Path) -> str:
+    if not USE_EASYOCR_FALLBACK:
+        return ""
+
+    try:
+        import easyocr
+    except ImportError:
+        return ""
+
+    try:
+        reader = easyocr.Reader(["ru", "en"], gpu=False, verbose=False)
+    except Exception as error:
+        print(f"EasyOCR is unavailable: {error}", file=sys.stderr)
+        return ""
+
+    page_texts = []
+    with tempfile.TemporaryDirectory(prefix="easyocr_pages_") as temp_dir:
+        image_paths = render_pdf_pages(input_path, Path(temp_dir))
+        if MAX_EASYOCR_PAGES > 0:
+            image_paths = image_paths[:MAX_EASYOCR_PAGES]
+
+        for image_path in image_paths:
+            try:
+                result = reader.readtext(
+                    str(image_path),
+                    detail=0,
+                    paragraph=False,
+                    decoder="greedy",
+                    batch_size=4,
+                )
+            except Exception as error:
+                print(f"EasyOCR failed on {image_path.name}: {error}", file=sys.stderr)
+                return ""
+            page_texts.append(" ".join(str(text) for text in result if str(text).strip()))
+
+    return normalize_ocr_text("\n".join(page_texts))
 
 
 def choose_best_text(candidates: list[tuple[str, str]]) -> TextCandidate:
     scored_candidates = [
-        TextCandidate(source, normalize_text(text), text_quality_score(text))
+        TextCandidate(source, normalize_ocr_text(text), text_quality_score(text))
         for source, text in candidates
         if normalize_text(text)
     ]
@@ -679,7 +806,7 @@ def parse_pdf_to_json(input_path: Path, output_dir: Path) -> Path:
     paddle_text = extract_text_with_paddleocr(input_path)
     paddle_text_candidate = TextCandidate(
         "paddleocr",
-        normalize_text(paddle_text),
+        normalize_ocr_text(paddle_text),
         text_quality_score(paddle_text),
     )
 
@@ -690,8 +817,35 @@ def parse_pdf_to_json(input_path: Path, output_dir: Path) -> Path:
                 (paddle_text_candidate.source, paddle_text_candidate.text),
             ]
         )
-        if best_ocr_candidate.source == "paddleocr" or not pdf_text_candidate.text:
+        if (
+            best_ocr_candidate.source == "paddleocr"
+            and not has_ocr_garbage(best_ocr_candidate.text)
+        ) or not pdf_text_candidate.text:
             json_data = build_paddle_ocr_json(input_path, best_ocr_candidate, pdf_tables)
+            json_path.write_text(
+                json.dumps(json_data, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            return json_path
+
+    easyocr_text = extract_text_with_easyocr(input_path)
+    easyocr_text_candidate = TextCandidate(
+        "easyocr",
+        normalize_ocr_text(easyocr_text),
+        text_quality_score(easyocr_text),
+    )
+
+    if easyocr_text_candidate.text:
+        best_easyocr_candidate = choose_best_text(
+            [
+                (pdf_text_candidate.source, pdf_text_candidate.text),
+                (paddle_text_candidate.source, paddle_text_candidate.text),
+                (easyocr_text_candidate.source, easyocr_text_candidate.text),
+            ]
+        )
+        if best_easyocr_candidate.source == "easyocr" or not pdf_text_candidate.text:
+            json_data = build_paddle_ocr_json(input_path, best_easyocr_candidate, pdf_tables)
+            json_data["metadata"]["parser"] = "easyocr"
             json_path.write_text(
                 json.dumps(json_data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
