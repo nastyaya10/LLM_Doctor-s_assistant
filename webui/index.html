@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedAI – ассистент врача</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="chat-wrapper">
+    <div class="chat-header">
+        <div class="ai-avatar">🧠</div>
+        <div class="header-text">
+            <h2>MedAI Assistant</h2>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div class="message assistant">
+            <div class="avatar-icon">🩺</div>
+            <div class="bubble">
+                Здравствуйте, коллега. Я MedAI — ваш ассистент для клинических вопросов. Чем могу помочь?
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-area">
+        <div class="input-wrapper">
+            <input type="text" id="messageInput" placeholder="Опишите клинический случай..." autocomplete="off"/>
+        </div>
+        <button class="send-btn" id="sendBtn">➤</button>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
