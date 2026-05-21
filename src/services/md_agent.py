@@ -10,9 +10,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-# 2. ИСПРАВЛЕННЫЕ ИМПОРТЫ из нашей новой структуры
-from src.services.extractor import MedicalRAGRetriever
-from src.services.rewriter_hyde import RetrievalContextBuilder
+from src.services.context_builder import RetrievalContextBuilder
+from src.services.medical_rag_retriever import MedicalRAGRetriever
 
 # Загрузка переменных окружения
 load_dotenv(PROJECT_ROOT / ".env")  # Явно указываем путь к .env в корне проекта

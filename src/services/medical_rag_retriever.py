@@ -14,6 +14,7 @@ from src.services.paths import (
     DEFAULT_CHUNKS_PATH,
     DEFAULT_FAISS_INDEX_PATH,
     DEFAULT_METADATA_PATH,
+    PROJECT_ROOT,
 )
 
 DEFAULT_MODEL_NAME = "BAAI/bge-m3"

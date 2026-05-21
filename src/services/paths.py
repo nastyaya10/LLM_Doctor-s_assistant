@@ -19,7 +19,7 @@ RAW_DATA = DATA_DIR / "raw"
 PARSED_DATA = DATA_DIR / "parsed"
 CHUNKED_DATA = DATA_DIR / "chunked"
 
-# Теперь пути к базе FAISS и JSON-чанкам ведут в data/processed/
-DEFAULT_FAISS_INDEX_PATH = env_path("RAG_FAISS_INDEX_PATH", PROCESSED_DATA / "faiss_index.bin")
-DEFAULT_CHUNKS_PATH = env_path("RAG_CHUNKS_PATH", PROCESSED_DATA / "all_chunks.json")
-DEFAULT_METADATA_PATH = env_path("RAG_METADATA_PATH", PROCESSED_DATA / "chunks_metadata.json")
+# Готовая RAG-база хранится в data/chunked/.
+DEFAULT_FAISS_INDEX_PATH = env_path("RAG_FAISS_INDEX_PATH", CHUNKED_DATA / "faiss_index.bin")
+DEFAULT_CHUNKS_PATH = env_path("RAG_CHUNKS_PATH", CHUNKED_DATA / "all_chunks.json")
+DEFAULT_METADATA_PATH = env_path("RAG_METADATA_PATH", CHUNKED_DATA / "chunks_metadata.json")

@@ -18,10 +18,11 @@ EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
 
 def run_pdf_parser():
     """Запускает парсинг PDF из data/raw в data/parsed."""
-    parser_script = PROJECT_ROOT / "scripts" / "pdf_parser.py"
+    parser_script = PROJECT_ROOT / "scripts" / "start_pdf.py"
+    PARSED_DATA.mkdir(parents=True, exist_ok=True)
     print(f"Запуск парсинга PDF из {RAW_DATA} в {PARSED_DATA}...")
     result = subprocess.run(
-        [sys.executable, str(parser_script), "--input", str(RAW_DATA), "--output-dir", str(PARSED_DATA)],
+        [sys.executable, str(parser_script)],
         capture_output=True, text=True
     )
     if result.returncode != 0:
@@ -31,6 +32,7 @@ def run_pdf_parser():
 
 def chunk_all_json_files():
     """Применяет chunking из data/parsed в data/chunked."""
+    CHUNKED_DATA.mkdir(parents=True, exist_ok=True)
     json_files = list(PARSED_DATA.glob("*.json"))
     if not json_files:
         raise FileNotFoundError(f"В папке {PARSED_DATA} нет JSON-файлов.")

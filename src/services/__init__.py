@@ -1,6 +1,5 @@
-# Используем точку (.) перед названием файла для относительного импорта внутри папки services
-from .rewriter_hyde import RetrievalContextBuilder, build_retrieval_context
-from .extractor import (
+from .context_builder import RetrievalContextBuilder, build_retrieval_context
+from .medical_rag_retriever import (
     MedicalRAGRetriever,
     QueryTransformer,
     RetrievalDebugInfo,
