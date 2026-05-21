@@ -15,14 +15,39 @@ PROJECT_DIR = PARSER_DIR.parent
 DEFAULT_INPUT = PARSER_DIR / "assets" / "1596_1582.pdf"
 DEFAULT_OUTPUT_DIR = PARSER_DIR / "output"
 LOCAL_CACHE_DIR = PROJECT_DIR / ".cache"
-DEFAULT_OCR_DPI = int(os.getenv("PARSER_OCR_DPI", "200"))
-USE_EASYOCR_FALLBACK = os.getenv("PARSER_USE_EASYOCR", "1").strip().lower() in (
+DEFAULT_OCR_DPI = int(os.getenv("PARSER_OCR_DPI", "160"))
+PADDLE_TEXT_DET_LIMIT_SIDE_LEN = int(os.getenv("PARSER_PADDLE_TEXT_DET_LIMIT", "960"))
+USE_PADDLE_TEXTLINE_ORIENTATION = os.getenv(
+    "PARSER_PADDLE_TEXTLINE_ORIENTATION", "0"
+).strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+MAX_PADDLEOCR_PAGES = int(os.getenv("PARSER_PADDLEOCR_MAX_PAGES", "0"))
+EXTRACT_TABLES = os.getenv("PARSER_EXTRACT_TABLES", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+USE_EASYOCR_FALLBACK = os.getenv("PARSER_USE_EASYOCR", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+USE_DOCLING_OCR_FALLBACK = os.getenv("PARSER_USE_DOCLING_OCR", "0").strip().lower() in (
     "1",
     "true",
     "yes",
     "on",
 )
 MAX_EASYOCR_PAGES = int(os.getenv("PARSER_EASYOCR_MAX_PAGES", "6"))
+TEXT_LAYER_GOOD_SCORE = float(os.getenv("PARSER_TEXT_LAYER_GOOD_SCORE", "1200"))
+_PADDLE_OCR: Any | None = None
+_EASYOCR_READER: Any | None = None
 
 
 def configure_ssl_certificates() -> None:
@@ -241,7 +266,33 @@ def extract_text_with_pdfplumber(input_path: Path) -> str:
     return normalize_ocr_text("\n".join(page_texts))
 
 
+def extract_best_pdf_text_layer(input_path: Path) -> TextCandidate:
+    pymupdf_text = extract_text_with_pymupdf(input_path)
+    pymupdf_candidate = TextCandidate(
+        "pymupdf",
+        normalize_ocr_text(pymupdf_text),
+        text_quality_score(pymupdf_text),
+    )
+    if (
+        pymupdf_candidate.text
+        and pymupdf_candidate.score >= TEXT_LAYER_GOOD_SCORE
+        and not has_ocr_garbage(pymupdf_candidate.text)
+    ):
+        return pymupdf_candidate
+
+    return choose_best_text(
+        [
+            (pymupdf_candidate.source, pymupdf_candidate.text),
+            ("pdfplumber", extract_text_with_pdfplumber(input_path)),
+            ("pypdf", extract_text_with_pypdf(input_path)),
+        ]
+    )
+
+
 def extract_tables_with_pdfplumber(input_path: Path) -> list[dict[str, Any]]:
+    if not EXTRACT_TABLES:
+        return []
+
     try:
         import pdfplumber
     except ImportError:
@@ -268,7 +319,12 @@ def extract_tables_with_pdfplumber(input_path: Path) -> list[dict[str, Any]]:
     return tables
 
 
-def render_pdf_pages(input_path: Path, output_dir: Path, dpi: int = DEFAULT_OCR_DPI) -> list[Path]:
+def render_pdf_pages(
+    input_path: Path,
+    output_dir: Path,
+    dpi: int = DEFAULT_OCR_DPI,
+    max_pages: int = 0,
+) -> list[Path]:
     try:
         import fitz
     except ImportError:
@@ -280,6 +336,8 @@ def render_pdf_pages(input_path: Path, output_dir: Path, dpi: int = DEFAULT_OCR_
 
     with fitz.open(input_path) as document:
         for page_index, page in enumerate(document, start=1):
+            if max_pages > 0 and page_index > max_pages:
+                break
             pixmap = page.get_pixmap(matrix=matrix, alpha=False)
             image_path = output_dir / f"page_{page_index:04d}.png"
             pixmap.save(image_path)
@@ -373,17 +431,17 @@ def create_paddle_ocr() -> Any:
         {
             "use_doc_orientation_classify": False,
             "use_doc_unwarping": False,
-            "use_textline_orientation": True,
+            "use_textline_orientation": USE_PADDLE_TEXTLINE_ORIENTATION,
             "text_detection_model_name": "PP-OCRv5_mobile_det",
             "text_recognition_model_name": "eslav_PP-OCRv5_mobile_rec",
-            "text_det_limit_side_len": 1280,
+            "text_det_limit_side_len": PADDLE_TEXT_DET_LIMIT_SIDE_LEN,
         },
         {
             "lang": "ru",
             "use_doc_orientation_classify": False,
             "use_doc_unwarping": False,
-            "use_textline_orientation": True,
-            "text_det_limit_side_len": 1280,
+            "use_textline_orientation": USE_PADDLE_TEXTLINE_ORIENTATION,
+            "text_det_limit_side_len": PADDLE_TEXT_DET_LIMIT_SIDE_LEN,
         },
         {"lang": "ru"},
     ]
@@ -400,16 +458,27 @@ def create_paddle_ocr() -> Any:
     raise RuntimeError("Failed to initialize PaddleOCR")
 
 
+def get_paddle_ocr() -> Any:
+    global _PADDLE_OCR
+    if _PADDLE_OCR is None:
+        _PADDLE_OCR = create_paddle_ocr()
+    return _PADDLE_OCR
+
+
 def extract_text_with_paddleocr(input_path: Path) -> str:
     try:
-        ocr = create_paddle_ocr()
+        ocr = get_paddle_ocr()
     except Exception as error:
         print(f"PaddleOCR is unavailable: {error}", file=sys.stderr)
         return ""
 
     page_texts = []
     with tempfile.TemporaryDirectory(prefix="paddleocr_pages_") as temp_dir:
-        image_paths = render_pdf_pages(input_path, Path(temp_dir))
+        image_paths = render_pdf_pages(
+            input_path,
+            Path(temp_dir),
+            max_pages=MAX_PADDLEOCR_PAGES,
+        )
         for image_path in image_paths:
             try:
                 if hasattr(ocr, "predict"):
@@ -438,11 +507,13 @@ def extract_text_with_easyocr(input_path: Path) -> str:
     except ImportError:
         return ""
 
-    try:
-        reader = easyocr.Reader(["ru", "en"], gpu=False, verbose=False)
-    except Exception as error:
-        print(f"EasyOCR is unavailable: {error}", file=sys.stderr)
-        return ""
+    global _EASYOCR_READER
+    if _EASYOCR_READER is None:
+        try:
+            _EASYOCR_READER = easyocr.Reader(["ru", "en"], gpu=False, verbose=False)
+        except Exception as error:
+            print(f"EasyOCR is unavailable: {error}", file=sys.stderr)
+            return ""
 
     page_texts = []
     with tempfile.TemporaryDirectory(prefix="easyocr_pages_") as temp_dir:
@@ -452,7 +523,7 @@ def extract_text_with_easyocr(input_path: Path) -> str:
 
         for image_path in image_paths:
             try:
-                result = reader.readtext(
+                result = _EASYOCR_READER.readtext(
                     str(image_path),
                     detail=0,
                     paragraph=False,
@@ -786,17 +857,17 @@ def parse_pdf_to_json(input_path: Path, output_dir: Path) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / f"{input_path.stem}.json"
 
-    pdf_text_candidate = choose_best_text(
-        [
-            ("pymupdf", extract_text_with_pymupdf(input_path)),
-            ("pdfplumber", extract_text_with_pdfplumber(input_path)),
-            ("pypdf", extract_text_with_pypdf(input_path)),
-        ]
-    )
-    pdf_tables = extract_tables_with_pdfplumber(input_path)
+    pdf_text_candidate = extract_best_pdf_text_layer(input_path)
+    pdf_tables: list[dict[str, Any]] | None = None
+
+    def get_pdf_tables() -> list[dict[str, Any]]:
+        nonlocal pdf_tables
+        if pdf_tables is None:
+            pdf_tables = extract_tables_with_pdfplumber(input_path)
+        return pdf_tables
 
     if pdf_text_candidate.text and not has_ocr_garbage(pdf_text_candidate.text):
-        json_data = build_text_layer_json(input_path, pdf_text_candidate, pdf_tables)
+        json_data = build_text_layer_json(input_path, pdf_text_candidate, get_pdf_tables())
         json_path.write_text(
             json.dumps(json_data, ensure_ascii=False, indent=2),
             encoding="utf-8",
@@ -821,7 +892,7 @@ def parse_pdf_to_json(input_path: Path, output_dir: Path) -> Path:
             best_ocr_candidate.source == "paddleocr"
             and not has_ocr_garbage(best_ocr_candidate.text)
         ) or not pdf_text_candidate.text:
-            json_data = build_paddle_ocr_json(input_path, best_ocr_candidate, pdf_tables)
+            json_data = build_paddle_ocr_json(input_path, best_ocr_candidate, get_pdf_tables())
             json_path.write_text(
                 json.dumps(json_data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
@@ -844,13 +915,30 @@ def parse_pdf_to_json(input_path: Path, output_dir: Path) -> Path:
             ]
         )
         if best_easyocr_candidate.source == "easyocr" or not pdf_text_candidate.text:
-            json_data = build_paddle_ocr_json(input_path, best_easyocr_candidate, pdf_tables)
+            json_data = build_paddle_ocr_json(input_path, best_easyocr_candidate, get_pdf_tables())
             json_data["metadata"]["parser"] = "easyocr"
             json_path.write_text(
                 json.dumps(json_data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
             return json_path
+
+    if not USE_DOCLING_OCR_FALLBACK:
+        if not pdf_text_candidate.text:
+            raise RuntimeError(
+                "No usable text layer or OCR text found. Set PARSER_USE_DOCLING_OCR=1 "
+                "to try the slower Docling OCR fallback."
+            )
+        json_data = build_text_only_json(
+            input_path,
+            pdf_text_candidate,
+            RuntimeError("Docling OCR fallback disabled by PARSER_USE_DOCLING_OCR=0"),
+        )
+        json_path.write_text(
+            json.dumps(json_data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return json_path
 
     try:
         result = convert_with_docling(input_path, use_ocr=True)
