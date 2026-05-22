@@ -1,0 +1,14 @@
+services:
+  doctor-assistant:
+    build: .
+    container_name: doctor-assistant
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: ${PORT:-8000}
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - ./data/chunked:/app/data/chunked:ro
+    restart: unless-stopped
