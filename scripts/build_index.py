@@ -9,12 +9,10 @@ from sentence_transformers import SentenceTransformer
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Импорт путей и КОНФИГА
 from src.services.paths import RAW_DATA, PARSED_DATA, CHUNKED_DATA, DEFAULT_FAISS_INDEX_PATH, DEFAULT_METADATA_PATH
+from src.config import EMBEDDER_MODEL_NAME, CHUNK_SIZE, OVERLAP
 from scripts.chunker import append_chunks_to_json
-
-# Модель для эмбеддингов
-EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
-
 
 def run_pdf_parser():
     """Запускает парсинг PDF из data/raw в data/parsed."""
@@ -44,11 +42,12 @@ def chunk_all_json_files():
 
     for input_path in json_files:
         print(f"Обработка файла: {input_path}")
+        # Используем параметры из config.py
         append_chunks_to_json(
             input_file_path=str(input_path),
             output_json_path=str(all_chunks_file),
-            chunk_size=400,
-            overlap=100
+            chunk_size=CHUNK_SIZE,
+            overlap=OVERLAP
         )
     print(f"Чанки сохранены в {all_chunks_file}")
 
@@ -59,7 +58,8 @@ def build_faiss_index():
     with open(all_chunks_file, "r", encoding="utf-8") as f:
         chunks = json.load(f)
 
-    model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    # Используем имя модели из config.py
+    model = SentenceTransformer(EMBEDDER_MODEL_NAME)
     texts = [chunk["text"] for chunk in chunks]
     embeddings = model.encode(texts, show_progress_bar=True)
 

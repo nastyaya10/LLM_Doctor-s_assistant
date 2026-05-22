@@ -5,8 +5,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from src.services.router import need_rag
-
 # 1. Определяем корень проекта (поднимаемся на 3 уровня вверх из src/services/md_agent.py)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -100,21 +98,6 @@ class MedicalAgent:
             return "Пожалуйста, введите текст вопроса."
 
         print(f"[Agent] Запрос: {user_message[:80]}...")
-
-        query = user_message
-        pseudo = ""
-        need = need_rag(query, pseudo)
-
-        if not need:
-            print("RAG не нужен")
-            response = client.chat.completions.create(
-                model=model,
-                messages=query,
-                temperature=0.0,
-            )
-            return response
-        else:
-            print("RAG нужен")
 
         start_time = time.time()
         try:

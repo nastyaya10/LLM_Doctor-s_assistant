@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 from src.services.paths import DEFAULT_METADATA_PATH
-
-
-DEFAULT_NEIGHBOR_RADIUS = int(os.getenv("RAG_NEIGHBOR_RADIUS", "1"))
-DEFAULT_MAX_CONTEXT_CHARS = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "30000"))
-
+# ИМПОРТИРУЕМ КОНСТАНТЫ ИЗ КОНФИГА
+from src.config import NEIGHBOR_RADIUS, MAX_CONTEXT_CHARS
 
 class RetrievalContextBuilder:
     """Builds an LLM context from retrieved chunks and their nearby chunks."""
@@ -18,8 +14,8 @@ class RetrievalContextBuilder:
     def __init__(
         self,
         chunks_path: str | Path = DEFAULT_METADATA_PATH,
-        neighbor_radius: int = DEFAULT_NEIGHBOR_RADIUS,
-        max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
+        neighbor_radius: int = NEIGHBOR_RADIUS,       # Изменено
+        max_context_chars: int = MAX_CONTEXT_CHARS,   # Изменено
     ) -> None:
         if neighbor_radius < 0:
             raise ValueError("neighbor_radius must be non-negative.")
