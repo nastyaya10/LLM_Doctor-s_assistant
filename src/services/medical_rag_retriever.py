@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-# Теперь импортируем пути из нашего централизованного модуля
+# Импортируем пути
 from src.services.paths import (
     DEFAULT_CHUNKS_PATH,
     DEFAULT_FAISS_INDEX_PATH,
@@ -17,14 +17,16 @@ from src.services.paths import (
     PROJECT_ROOT,
 )
 
-DEFAULT_MODEL_NAME = "BAAI/bge-m3"
-DEFAULT_RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
-DEFAULT_TOP_K = 5
-
-# Explicit retrieval cutoff. With a normalized BGE-M3 embedding + IndexFlatIP
-# this is cosine-like similarity. Tune it on your validation queries.
-SIMILARITY_THRESHOLD = 0.55
-DEFAULT_SIMILARITY_THRESHOLD = SIMILARITY_THRESHOLD
+# ИМПОРТИРУЕМ КОНСТАНТЫ ИЗ КОНФИГА
+from src.config import (
+    TOP_K,
+    SIMILARITY_THRESHOLD,
+    EMBEDDER_MODEL_NAME,
+    RERANKER_MODEL_NAME,
+    USE_RERANKER,
+    LLM_BASE_URL,
+    LLM_MODEL_NAME,
+)
 
 DEFAULT_DOTENV_PATH = PROJECT_ROOT / ".env"
 LEGACY_DOTENV_PATH = PROJECT_ROOT / ".env.py"
@@ -70,8 +72,8 @@ class QueryTransformer:
     folder_id_env: str = "FOLDER_ID"
     base_url_env: str = "BASE_URL"
     model_env: str = "MODEL"
-    default_base_url: str = "https://ai.api.cloud.yandex.net/v1"
-    default_model: str = "yandexgpt/rc"
+    default_base_url: str = LLM_BASE_URL
+    default_model: str = LLM_MODEL_NAME
     max_retries: int = 2
     last_rewrite_source: str = field(default="not_run", init=False)
     last_hyde_source: str = field(default="not_run", init=False)
@@ -373,17 +375,17 @@ class MedicalRAGRetriever:
     HYDE_VARIANT = "hyde"
 
     def __init__(
-        self,
-        faiss_index_path: str | Path = DEFAULT_FAISS_INDEX_PATH,
-        chunks_path: str | Path = DEFAULT_CHUNKS_PATH,
-        metadata_path: str | Path | None = DEFAULT_METADATA_PATH,
-        model_name: str = DEFAULT_MODEL_NAME,
-        top_k: int = DEFAULT_TOP_K,
-        similarity_threshold: float = SIMILARITY_THRESHOLD,
-        query_transformer: QueryTransformer | None = None,
-        normalize_query_embeddings: bool = True,
-        use_reranker: bool | None = None,
-        reranker_model_name: str = DEFAULT_RERANKER_MODEL_NAME,
+            self,
+            faiss_index_path: str | Path = DEFAULT_FAISS_INDEX_PATH,
+            chunks_path: str | Path = DEFAULT_CHUNKS_PATH,
+            metadata_path: str | Path | None = DEFAULT_METADATA_PATH,
+            model_name: str = EMBEDDER_MODEL_NAME,  # Изменено
+            top_k: int = TOP_K,  # Изменено
+            similarity_threshold: float = SIMILARITY_THRESHOLD,  # Изменено
+            query_transformer: QueryTransformer | None = None,
+            normalize_query_embeddings: bool = True,
+            use_reranker: bool | None = USE_RERANKER,  # Изменено
+            reranker_model_name: str = RERANKER_MODEL_NAME,  # Изменено
     ) -> None:
         if top_k <= 0:
             raise ValueError("top_k must be positive.")

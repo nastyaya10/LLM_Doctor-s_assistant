@@ -5,29 +5,33 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# 1. Определяем корень проекта (поднимаемся на 3 уровня вверх из src/services/md_agent.py)
+# 1. Определяем корень проекта
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# ИМПОРТИРУЕМ КОНСТАНТЫ ИЗ КОНФИГА
+from src.config import (
+    MAX_CONTEXT_CHARS,
+    LLM_BASE_URL,
+    LLM_MODEL_NAME,
+    LOG_RAG_CONTEXT
+)
 from src.services.context_builder import RetrievalContextBuilder
 from src.services.medical_rag_retriever import MedicalRAGRetriever
 
 # Загрузка переменных окружения
-load_dotenv(PROJECT_ROOT / ".env")  # Явно указываем путь к .env в корне проекта
+load_dotenv(PROJECT_ROOT / ".env")
 
 api_key = os.getenv("API_KEY")
 folder_id = os.getenv("FOLDER_ID")
-base_url = os.getenv("BASE_URL", "https://ai.api.cloud.yandex.net/v1")
-model_name = os.getenv("MODEL", "yandexgpt/rc")
-log_rag_context = os.getenv("LOG_RAG_CONTEXT", "1").lower() not in ("0", "false", "no")
 
-if model_name.startswith("gpt://"):
-    model = model_name
+if LLM_MODEL_NAME.startswith("gpt://"):
+    model = LLM_MODEL_NAME
 elif folder_id:
-    model = f"gpt://{folder_id}/{model_name}"
+    model = f"gpt://{folder_id}/{LLM_MODEL_NAME}"
 else:
-    model = model_name
+    model = LLM_MODEL_NAME
 
 if not api_key:
     print("Ошибка: переменная API_KEY не найдена. Создайте файл .env в корне проекта.")
@@ -35,7 +39,7 @@ if not api_key:
 
 client = OpenAI(
     api_key=api_key,
-    base_url=base_url,
+    base_url=LLM_BASE_URL,
     project=folder_id,
     timeout=60.0,
     max_retries=0
