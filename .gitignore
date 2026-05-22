@@ -20,5 +20,6 @@ Thumbs.db
 # Локальные исходники/артефакты сборки базы из PDF
 data/raw/
 data/parsed/
+data/chunked/
 db/assets/
 db/output/
