@@ -151,8 +151,8 @@ class RetrievalContextBuilder:
 def build_retrieval_context(
     retrieval_result: Any,
     chunks_path: str | Path = DEFAULT_METADATA_PATH,
-    neighbor_radius: int = DEFAULT_NEIGHBOR_RADIUS,
-    max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
+    neighbor_radius: int = NEIGHBOR_RADIUS,
+    max_context_chars: int = MAX_CONTEXT_CHARS,
 ) -> str:
     builder = RetrievalContextBuilder(
         chunks_path=chunks_path,

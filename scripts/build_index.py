@@ -16,6 +16,14 @@ from scripts.chunker import append_chunks_to_json
 
 def run_pdf_parser():
     """Запускает парсинг PDF из data/raw в data/parsed."""
+    if not list(RAW_DATA.glob("*.pdf")):
+        if list(PARSED_DATA.glob("*.json")):
+            print(f"PDF не найдены в {RAW_DATA}; используем готовые JSON из {PARSED_DATA}.")
+            return
+        raise FileNotFoundError(
+            f"В {RAW_DATA} нет PDF-файлов, а в {PARSED_DATA} нет готовых JSON."
+        )
+
     parser_script = PROJECT_ROOT / "scripts" / "start_pdf.py"
     PARSED_DATA.mkdir(parents=True, exist_ok=True)
     print(f"Запуск парсинга PDF из {RAW_DATA} в {PARSED_DATA}...")
@@ -24,7 +32,8 @@ def run_pdf_parser():
         capture_output=True, text=True
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Парсинг PDF завершился с ошибкой: {result.stderr}")
+        details = "\n".join(part for part in (result.stdout, result.stderr) if part.strip())
+        raise RuntimeError(f"Парсинг PDF завершился с ошибкой:\n{details}")
     print(result.stdout)
 
 
@@ -69,7 +78,7 @@ def build_faiss_index():
 
     faiss.write_index(index, str(DEFAULT_FAISS_INDEX_PATH))
     with open(DEFAULT_METADATA_PATH, "w", encoding="utf-8") as f:
-        json.dump(chunks, f, ensure_ascii=False, indent=2)
+        json.dump(chunks, f, ensure_ascii=True, indent=2)
     print(f"Индекс сохранен в {DEFAULT_FAISS_INDEX_PATH}")
 
 

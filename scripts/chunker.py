@@ -95,6 +95,6 @@ def append_chunks_to_json(
     # 5. Запись
     existing_chunks.extend(new_chunks)
     with open(output_json_path, 'w', encoding='utf-8') as f:
-        json.dump(existing_chunks, f, ensure_ascii=False, indent=2)
+        json.dump(existing_chunks, f, ensure_ascii=True, indent=2)
 
     return len(existing_chunks)
