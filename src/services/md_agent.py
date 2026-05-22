@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.services.context_builder import RetrievalContextBuilder
 from src.services.medical_rag_retriever import MedicalRAGRetriever
+from src.services.prompt_loader import load_prompt
 
 # Загрузка переменных окружения
 load_dotenv(PROJECT_ROOT / ".env")  # Явно указываем путь к .env в корне проекта
@@ -65,13 +66,7 @@ def get_context_builder() -> RetrievalContextBuilder:
 
 
 def build_system_prompt() -> str:
-    return (
-        "Ты – ИИ-ассистент, который отвечает на вопросы пользователя "
-        "ИСКЛЮЧИТЕЛЬНО на основе следующей информации из базы медицинских документов.\n"
-        "Ты не имеешь права использовать свои внешние знания или додумывать что-либо.\n"
-        "Если ответа нет в найденных фрагментах, честно скажи, что в них такой информации нет.\n"
-        "По возможности указывай источник по названию документа из контекста."
-    )
+    return load_prompt("system_prompt")
 
 
 def log_context(context: str) -> None:
@@ -88,7 +83,6 @@ class MedicalAgent:
 
     def __init__(self):
         print("[Agent] Инициализация RAG-агента.")
-        self.system_prompt = build_system_prompt()
         self.messages = []
         print("[Agent] Агент готов к работе.")
 
@@ -118,7 +112,7 @@ class MedicalAgent:
             )
 
             messages = [
-                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": build_system_prompt()},
                 *self.messages,
                 {"role": "user", "content": user_prompt},
             ]

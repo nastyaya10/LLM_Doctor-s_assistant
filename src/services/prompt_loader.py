@@ -7,4 +7,4 @@ def load_prompt(prompt_name: str) -> str:
         return path.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
         # Fallback на случай отсутствия файла
-        return "Отсутствует промпт для {prompt_name}"
+        return f"Отсутствует промпт для {prompt_name}"
