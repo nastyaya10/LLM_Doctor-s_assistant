@@ -9,6 +9,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+# Импортируем загрузчик промптов
+from src.services.prompt_loader import load_prompt
+
 # Импортируем пути
 from src.services.paths import (
     DEFAULT_CHUNKS_PATH,
@@ -19,8 +22,8 @@ from src.services.paths import (
 
 # ИМПОРТИРУЕМ КОНСТАНТЫ ИЗ КОНФИГА
 from src.config import (
-    TOP_K, // Константа для отсечения после семантического поиска
-    TOP_R, // Константа отсечения после реранкера
+    TOP_K, # Константа для отсечения после семантического поиска
+    TOP_R, # Константа для отсечения после реранкера поиска
     SIMILARITY_THRESHOLD,
     EMBEDDER_MODEL_NAME,
     RERANKER_MODEL_NAME,
@@ -121,40 +124,22 @@ class QueryTransformer:
         )
 
     def _try_llm_rewrite(self, query: str) -> str | None:
-        prompt = f"""
-        Ты медицинский query-rewriter для RAG по русскоязычным клиническим
-        документам.
-
-        Задача:
-        - перепиши запрос пользователя в одну короткую поисковую формулировку;
-        - добавь медицинские синонимы, расшифровки аббревиатур и ключевые термины;
-        - не отвечай на вопрос пользователя;
-        - не добавляй markdown, списки, кавычки и пояснения.
-
-        Запрос пользователя:
-        {query.strip()}
-        """
-        return self._call_llm(prompt)
+        try:
+            prompt_template = load_prompt("rewriter_rewrite")
+            prompt = prompt_template.format(query=query.strip())
+            return self._call_llm(prompt)
+        except Exception as e:
+            self.last_llm_error = f"Template loading error: {e}"
+            return None
 
     def _try_llm_hyde(self, query: str) -> str | None:
-        prompt = f"""
-        Ты генерируешь HyDE pseudo-document для medical RAG.
-
-        Напиши один короткий абзац на русском языке, похожий на фрагмент
-        клинических рекомендаций или медицинского документа, который мог бы
-        содержать ответ на запрос пользователя.
-
-        Требования:
-        - упомяни релевантные симптомы, диагнозы, обследования, лечение и
-          маршрутизацию пациента;
-        - не давай окончательный медицинский совет;
-        - не добавляй markdown, списки и дисклеймеры;
-        - текст должен быть полезен именно для embedding search.
-
-        Запрос пользователя:
-        {query.strip()}
-        """
-        return self._call_llm(prompt)
+        try:
+            prompt_template = load_prompt("rewriter_hyde")
+            prompt = prompt_template.format(query=query.strip())
+            return self._call_llm(prompt)
+        except Exception as e:
+            self.last_llm_error = f"Template loading error: {e}"
+            return None
 
     def _call_llm(self, prompt: str) -> str | None:
         self._load_dotenv_if_available()
@@ -316,7 +301,6 @@ class QueryTransformer:
         return cleaned[:1200]
 
 
-
 @dataclass(frozen=True)
 class RetrievedChunk:
     score: float
@@ -380,13 +364,13 @@ class MedicalRAGRetriever:
             faiss_index_path: str | Path = DEFAULT_FAISS_INDEX_PATH,
             chunks_path: str | Path = DEFAULT_CHUNKS_PATH,
             metadata_path: str | Path | None = DEFAULT_METADATA_PATH,
-            model_name: str = EMBEDDER_MODEL_NAME,  # Изменено
-            top_k: int = TOP_K,  # Изменено
-            similarity_threshold: float = SIMILARITY_THRESHOLD,  # Изменено
+            model_name: str = EMBEDDER_MODEL_NAME, 
+            top_k: int = TOP_K, 
+            similarity_threshold: float = SIMILARITY_THRESHOLD, 
             query_transformer: QueryTransformer | None = None,
             normalize_query_embeddings: bool = True,
-            use_reranker: bool | None = USE_RERANKER,  # Изменено
-            reranker_model_name: str = RERANKER_MODEL_NAME,  # Изменено
+            use_reranker: bool | None = USE_RERANKER, 
+            reranker_model_name: str = RERANKER_MODEL_NAME, 
     ) -> None:
         if top_k <= 0:
             raise ValueError("top_k must be positive.")
