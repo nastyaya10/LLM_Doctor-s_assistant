@@ -83,19 +83,25 @@ class MedicalAgent:
                 if not context:
                     return "Информации по вопросу в базе не найдено."
 
-                user_prompt = (
-                    f"Контекст:\n{context}\n\n"
-                    f"Вопрос:\n{user_message}"
-                )
+                # Загружаем системный промпт для RAG
                 system_prompt = load_prompt("system_prompt")
+                
+                # Загружаем шаблон юзер-промпта и форматируем его с контекстом
+                user_prompt_template = load_prompt("user_prompt_rag")
+                user_prompt = user_prompt_template.format(
+                    context=context,
+                    question=user_message
+                )
             else:
-                # Прямой ответ LLM
+                # Прямой ответ LLM (режим обычного чата)
+                
+                # Загружаем отдельный системный промпт для обычного общения
+                system_prompt = load_prompt("system_prompt_chat")
                 user_prompt = user_message
-                system_prompt = "Ты — помощник врача. Отвечай кратко и профессионально."
 
             messages = [
                 {"role": "system", "content": system_prompt},
-                *self.messages[-4:],  # Берем только последние сообщения для контекста сессии
+                *self.messages[-CHAT_HISTORY_DEPTH:] if CHAT_HISTORY_DEPTH > 0 else [],  # Берем только последние сообщения для контекста сессии
                 {"role": "user", "content": user_prompt},
             ]
 
