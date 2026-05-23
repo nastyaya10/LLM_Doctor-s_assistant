@@ -5,7 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# 1. Определяем корень проекта (поднимаемся на 3 уровня вверх из src/services/md_agent.py)
+# 1. Определяем корень проекта
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -13,9 +13,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.services.context_builder import RetrievalContextBuilder
 from src.services.medical_rag_retriever import MedicalRAGRetriever
 from src.services.prompt_loader import load_prompt
+from src.services.router import need_rag  # Импортируем наш маршрутизатор
 
 # Загрузка переменных окружения
-load_dotenv(PROJECT_ROOT / ".env")  # Явно указываем путь к .env в корне проекта
+load_dotenv(PROJECT_ROOT / ".env")
 
 api_key = os.getenv("API_KEY")
 folder_id = os.getenv("FOLDER_ID")
@@ -31,7 +32,7 @@ else:
     model = model_name
 
 if not api_key:
-    print("Ошибка: переменная API_KEY не найдена. Создайте файл .env в корне проекта.")
+    print("Ошибка: переменная API_KEY не найдена.")
     sys.exit(1)
 
 client = OpenAI(
@@ -42,78 +43,59 @@ client = OpenAI(
     max_retries=0
 )
 
+_retriever = None
+_context_builder = None
 
-_retriever: MedicalRAGRetriever | None = None
-_context_builder: RetrievalContextBuilder | None = None
 
-
-def get_retriever() -> MedicalRAGRetriever:
+def get_retriever():
     global _retriever
     if _retriever is None:
-        print("[RAG] Инициализация retriever...")
         _retriever = MedicalRAGRetriever()
-        print("[RAG] Retriever готов.")
     return _retriever
 
 
-def get_context_builder() -> RetrievalContextBuilder:
+def get_context_builder():
     global _context_builder
     if _context_builder is None:
-        print("[RAG] Загрузка чанков для сборки контекста...")
         _context_builder = RetrievalContextBuilder()
-        print("[RAG] Сборщик контекста готов.")
     return _context_builder
 
 
-def build_system_prompt() -> str:
-    return load_prompt("system_prompt")
-
-
-def log_context(context: str) -> None:
-    if not log_rag_context:
-        return
-
-    print("\n[RAG] Контекст, отправленный в LLM:")
-    print(context)
-    print("[RAG] Конец контекста\n")
-
-
 class MedicalAgent:
-    """RAG-агент, отвечающий только по найденному контексту."""
-
     def __init__(self):
-        print("[Agent] Инициализация RAG-агента.")
+        print("[Agent] Инициализация RAG-агента с маршрутизатором.")
         self.messages = []
-        print("[Agent] Агент готов к работе.")
 
     def generate_response(self, user_message: str) -> str:
-        """Принимает вопрос, отправляет в LLM и возвращает ответ."""
         if not user_message.strip():
             return "Пожалуйста, введите текст вопроса."
 
-        print(f"[Agent] Запрос: {user_message[:80]}...")
+        # Решаем, нужен ли RAG
+        use_rag = need_rag(user_message)
+        print(f"[Agent] Запрос: {user_message[:50]}... | Режим: {'RAG' if use_rag else 'CHAT'}")
 
-        start_time = time.time()
         try:
-            retrieval_result = get_retriever().retrieve(user_message)
-            context = get_context_builder().build_context(retrieval_result)
+            if use_rag:
+                # Пайплайн RAG
+                retrieval_result = get_retriever().retrieve(user_message)
+                context = get_context_builder().build_context(retrieval_result)
 
-            if not context:
-                return "В базе знаний не найдено релевантных фрагментов для ответа."
+                if not context:
+                    return "Информации по вопросу в базе не найдено."
 
-            log_context(context)
-
-            user_prompt = (
-                "Следующая информация:\n"
-                f"{context}\n\n"
-                "Ответь на вопрос пользователя исключительно на основе информации выше.\n"
-                "Вопрос пользователя:\n"
-                f"{user_message}"
-            )
+                user_prompt = (
+                    f"Контекст:\n{context}\n\n"
+                    f"Вопрос:\n{user_message}"
+                )
+                system_prompt = load_prompt("system_prompt")
+            else:
+                # Прямой ответ LLM
+                user_prompt = user_message
+                system_prompt = "Ты — помощник врача. Отвечай кратко и профессионально."
 
             messages = [
-                {"role": "system", "content": build_system_prompt()},
-                *self.messages,
+                {"role": "system", "content": system_prompt},
+                *self.messages[-4:],  # Берем только последние сообщения для контекста сессии
                 {"role": "user", "content": user_prompt},
             ]
 
@@ -122,31 +104,19 @@ class MedicalAgent:
                 messages=messages,
                 temperature=0.0,
             )
-            elapsed = time.time() - start_time
-            print(f"[Agent] Ответ получен за {elapsed:.2f} сек.")
             answer = response.choices[0].message.content
+
             self.messages.append({"role": "user", "content": user_message})
             self.messages.append({"role": "assistant", "content": answer})
             return answer
+
         except Exception as e:
-            elapsed = time.time() - start_time
-            print(f"[Agent] Ошибка через {elapsed:.2f} сек: {e}")
-            return f"Ошибка при обращении к языковой модели: {e}"
+            return f"Ошибка при обработке запроса: {e}"
 
 
-# Оставляем консольный режим, если запустить md_agent.py напрямую
 if __name__ == "__main__":
     agent = MedicalAgent()
-    print("\nЗадавайте вопросы (exit для выхода).\n")
     while True:
-        try:
-            user_input = input(">> ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-        if user_input.lower() in ("exit", "quit"):
-            print("Завершение работы.")
-            break
-        if not user_input:
-            continue
-        answer = agent.generate_response(user_input)
-        print(answer)
+        user_input = input(">> ").strip()
+        if user_input.lower() in ("exit", "quit"): break
+        print(agent.generate_response(user_input))
