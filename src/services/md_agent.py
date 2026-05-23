@@ -85,7 +85,7 @@ class MedicalAgent:
                 if not top_chunks:
                     return json.dumps({"answer": "Информации по вопросу в базе не найдено.", "sources": []})
 
-                context = get_context_builder().build_context(top_chunks)
+                context = get_context_builder().build_context(retrieval_result)
                 
                 # Собираем источники в JSON-структуру для фронтенда
                 sources = [{"value": c.text[:200] + "...", "source": c.title} for c in top_chunks]
@@ -99,9 +99,10 @@ class MedicalAgent:
                 system_prompt = load_prompt("system_prompt_chat")
                 user_prompt = user_message
 
+            history_messages = self.messages[-CHAT_HISTORY_DEPTH:] if CHAT_HISTORY_DEPTH > 0 else []
             messages = [
                 {"role": "system", "content": system_prompt},
-                *self.messages[-CHAT_HISTORY_DEPTH:] if CHAT_HISTORY_DEPTH > 0 else [],
+                *history_messages,
                 {"role": "user", "content": user_prompt},
             ]
 

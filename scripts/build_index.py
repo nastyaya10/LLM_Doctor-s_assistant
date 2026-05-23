@@ -60,6 +60,12 @@ def chunk_all_json_files():
         )
     print(f"Чанки сохранены в {all_chunks_file}")
 
+    with open(all_chunks_file, "r", encoding="utf-8") as source:
+        chunks = json.load(source)
+    with open(DEFAULT_METADATA_PATH, "w", encoding="utf-8") as target:
+        json.dump(chunks, target, ensure_ascii=True, indent=2)
+    print(f"Метаданные сохранены в {DEFAULT_METADATA_PATH}")
+
 
 def build_faiss_index():
     """Строит FAISS-индекс и сохраняет в data/processed."""

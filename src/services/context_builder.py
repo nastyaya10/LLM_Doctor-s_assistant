@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.services.paths import DEFAULT_METADATA_PATH
+from src.services.paths import DEFAULT_CHUNKS_PATH
 # ИМПОРТИРУЕМ КОНСТАНТЫ ИЗ КОНФИГА
 from src.config import NEIGHBOR_RADIUS, MAX_CONTEXT_CHARS
 
@@ -13,7 +13,7 @@ class RetrievalContextBuilder:
 
     def __init__(
         self,
-        chunks_path: str | Path = DEFAULT_METADATA_PATH,
+        chunks_path: str | Path = DEFAULT_CHUNKS_PATH,
         neighbor_radius: int = NEIGHBOR_RADIUS,       # Изменено
         max_context_chars: int = MAX_CONTEXT_CHARS,   # Изменено
     ) -> None:
@@ -150,7 +150,7 @@ class RetrievalContextBuilder:
 
 def build_retrieval_context(
     retrieval_result: Any,
-    chunks_path: str | Path = DEFAULT_METADATA_PATH,
+    chunks_path: str | Path = DEFAULT_CHUNKS_PATH,
     neighbor_radius: int = NEIGHBOR_RADIUS,
     max_context_chars: int = MAX_CONTEXT_CHARS,
 ) -> str:

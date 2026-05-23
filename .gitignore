@@ -21,5 +21,4 @@ Thumbs.db
 data/raw/
 data/parsed/
 data/chunked/
-db/assets/
-db/output/
+data/non_merged
