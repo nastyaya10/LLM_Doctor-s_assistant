@@ -19,7 +19,8 @@ from src.services.paths import (
 
 # ИМПОРТИРУЕМ КОНСТАНТЫ ИЗ КОНФИГА
 from src.config import (
-    TOP_K,
+    TOP_K, // Константа для отсечения после семантического поиска
+    TOP_R, // Константа отсечения после реранкера
     SIMILARITY_THRESHOLD,
     EMBEDDER_MODEL_NAME,
     RERANKER_MODEL_NAME,
@@ -470,6 +471,7 @@ class MedicalRAGRetriever:
         ]
         filtered_results.sort(key=lambda chunk: chunk.score, reverse=True)
         self._log_reranker_decision(len(merged_chunks), len(filtered_results))
+        
         if self.use_reranker and filtered_results:
             reranker = self._get_reranker()
             filtered_results = self._rerank_results(
@@ -477,6 +479,8 @@ class MedicalRAGRetriever:
                 filtered_results,
                 reranker,
             )
+            # Ограничиваем количество результатов константой TOP_R
+            filtered_results = filtered_results[:TOP_R]
 
         debug_info = RetrievalDebugInfo(
             raw_results_by_variant=raw_results_by_variant,
