@@ -1,7 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
-from pathlib import Path
+from src.services.prompt_loader import load_prompt
 
 load_dotenv()
 
@@ -10,12 +10,9 @@ FOLDER_ID = os.getenv("FOLDER_ID")
 BASE_URL = os.getenv("BASE_URL")
 MODEL = os.getenv("MODEL")  # yandexgpt/rc
 
-PROMPT_PATH = Path("../prompts/router.txt")
-
-
 def _load_prompt_template() -> str:
     """Загружает шаблон промпта из файла или возвращает fallback."""
-    return PROMPT_PATH.read_text(encoding="utf-8")
+    return load_prompt("router")
 
 
 def need_rag(query: str, pseudo_answer: str = None) -> bool:
