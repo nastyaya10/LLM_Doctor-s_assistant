@@ -4,7 +4,8 @@ from pathlib import Path
 # --- Базовые параметры RAG (поиск и чанкинг) ---
 CHUNK_SIZE = int(os.getenv("RAG_CHUNK_SIZE", 400))
 OVERLAP = int(os.getenv("RAG_OVERLAP", 100))
-TOP_K = int(os.getenv("RAG_TOP_K", 5))
+TOP_K = int(os.getenv("RAG_TOP_K", 10))
+TOP_R = int(os.getenv("RAG_TOP_R", 5))
 SIMILARITY_THRESHOLD = float(os.getenv("RAG_SIMILARITY_THRESHOLD", 0.55))
 NEIGHBOR_RADIUS = int(os.getenv("RAG_NEIGHBOR_RADIUS", 1))
 
