@@ -87,6 +87,55 @@ body {
 .answer-block {
     color: #111827;
 }
+.message-feedback {
+    border-top: 1px solid #e7eef5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 10px;
+    white-space: normal;
+}
+.assistant-rich .message-feedback {
+    margin-top: 0;
+}
+.feedback-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.feedback-btn {
+    width: 32px;
+    height: 30px;
+    border: 1px solid #d7e3ec;
+    border-radius: 10px;
+    background: #f5f8fb;
+    color: #405563;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.feedback-btn:hover {
+    background: #eaf3f7;
+    border-color: #bcd2df;
+    transform: translateY(-1px);
+}
+.feedback-btn.active {
+    background: #dcebf1;
+    border-color: #036b7c;
+    box-shadow: 0 0 0 3px rgba(3, 107, 124, 0.12);
+    color: #024b5e;
+    transform: scale(1.06);
+}
+.feedback-status {
+    color: #4f6b78;
+    font-size: 0.78rem;
+    min-height: 1.2em;
+}
+.feedback-accepted .feedback-btn.active {
+    animation: feedbackBounce 0.28s ease;
+}
 .sources-block,
 .debug-chunks {
     border-top: 1px solid #e7eef5;
@@ -246,4 +295,9 @@ body {
 @keyframes pulseRecord {
     0%,100% { box-shadow: 0 0 0 0 rgba(198,40,40,0.35); }
     50% { box-shadow: 0 0 0 7px rgba(198,40,40,0); }
+}
+@keyframes feedbackBounce {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.14); }
+    100% { transform: scale(1.06); }
 }

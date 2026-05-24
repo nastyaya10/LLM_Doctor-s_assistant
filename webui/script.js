@@ -18,6 +18,8 @@
     let pcmChunks = [];
     let pcmSampleRate = 16000;
     let sttConfig = null;
+    let feedbackMessageCounter = 0;
+    const feedbackState = new Map();
 
     function getSessionId() {
         let sessionId = localStorage.getItem('medai_session_id');
@@ -49,6 +51,10 @@
         const bubble = document.createElement('div');
         bubble.className = 'bubble';
         bubble.textContent = text;
+
+        if (role !== 'user') {
+            bubble.appendChild(createMessageFeedback());
+        }
 
         if (role === 'user') {
             messageDiv.appendChild(bubble);
@@ -87,9 +93,80 @@
             bubble.appendChild(createDebugChunksBlock(debugChunks));
         }
 
+        bubble.appendChild(createMessageFeedback());
+
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(bubble);
         return messageDiv;
+    }
+
+    function createMessageFeedback(existingId) {
+        const feedbackId = existingId || `assistant-feedback-${feedbackMessageCounter += 1}`;
+        if (!feedbackState.has(feedbackId)) {
+            feedbackState.set(feedbackId, null);
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message-feedback';
+        wrapper.dataset.feedbackId = feedbackId;
+
+        const buttons = document.createElement('div');
+        buttons.className = 'feedback-buttons';
+
+        const status = document.createElement('span');
+        status.className = 'feedback-status';
+        status.setAttribute('aria-live', 'polite');
+
+        const likeBtn = createFeedbackButton('like', '👍', 'Поставить лайк');
+        const dislikeBtn = createFeedbackButton('dislike', '👎', 'Поставить дизлайк');
+
+        function renderFeedback() {
+            const selected = feedbackState.get(feedbackId);
+            likeBtn.classList.toggle('active', selected === 'like');
+            dislikeBtn.classList.toggle('active', selected === 'dislike');
+            likeBtn.setAttribute('aria-pressed', String(selected === 'like'));
+            dislikeBtn.setAttribute('aria-pressed', String(selected === 'dislike'));
+            status.textContent = selected ? 'Оценка принята' : '';
+        }
+
+        function setFeedback(value) {
+            const nextValue = feedbackState.get(feedbackId) === value ? null : value;
+            feedbackState.set(feedbackId, nextValue);
+            wrapper.classList.remove('feedback-accepted');
+            void wrapper.offsetWidth;
+            if (nextValue) wrapper.classList.add('feedback-accepted');
+            renderFeedback();
+        }
+
+        likeBtn.addEventListener('click', () => setFeedback('like'));
+        dislikeBtn.addEventListener('click', () => setFeedback('dislike'));
+
+        buttons.appendChild(likeBtn);
+        buttons.appendChild(dislikeBtn);
+        wrapper.appendChild(buttons);
+        wrapper.appendChild(status);
+        renderFeedback();
+
+        return wrapper;
+    }
+
+    function createFeedbackButton(value, label, title) {
+        const button = document.createElement('button');
+        button.className = `feedback-btn ${value}`;
+        button.type = 'button';
+        button.textContent = label;
+        button.title = title;
+        button.setAttribute('aria-label', title);
+        button.setAttribute('aria-pressed', 'false');
+        return button;
+    }
+
+    function hydrateInitialAssistantFeedback() {
+        document.querySelectorAll('.message.assistant .bubble').forEach((bubble) => {
+            if (!bubble.querySelector('.message-feedback')) {
+                bubble.appendChild(createMessageFeedback());
+            }
+        });
     }
 
     function renderInlineMarkdown(container, text) {
@@ -566,5 +643,6 @@
 
     messageInput.focus();
     updateVoiceButton();
+    hydrateInitialAssistantFeedback();
     scrollToBottom();
 })();
