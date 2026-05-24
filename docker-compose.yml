@@ -8,7 +8,28 @@ services:
       HOST: 0.0.0.0
       PORT: ${PORT:-8000}
     ports:
-      - "${PORT:-8000}:${PORT:-8000}"
+      - "127.0.0.1:${PORT:-8000}:${PORT:-8000}"
     volumes:
       - ./data/chunked:/app/data/chunked:ro
     restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: doctor-assistant-caddy
+    depends_on:
+      - doctor-assistant
+    environment:
+      DOMAIN: ${DOMAIN}
+      APP_PORT: ${PORT:-8000}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

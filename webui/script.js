@@ -347,6 +347,11 @@
     }
 
     async function startVoiceRecording() {
+        if (!window.isSecureContext) {
+            setVoiceStatus('Микрофон доступен только по HTTPS или через localhost.', true);
+            return;
+        }
+
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             setVoiceStatus('Браузер не поддерживает запись аудио.', true);
             return;

@@ -1,0 +1,4 @@
+{$DOMAIN} {
+    encode gzip zstd
+    reverse_proxy doctor-assistant:{$APP_PORT}
+}
