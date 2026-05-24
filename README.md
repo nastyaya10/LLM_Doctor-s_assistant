@@ -44,6 +44,14 @@ BASE_URL=https://ai.api.cloud.yandex.net/v1
 MODEL=yandexgpt/rc
 FOLDER_ID=your_folder_id
 
+STT_API_KEY=your_openai_or_compatible_stt_key
+STT_BASE_URL=https://api.openai.com/v1
+STT_MODEL=whisper-1
+# STT_PROVIDER=openai
+# STT_PROVIDER=yandex
+# STT_LANG=ru-RU
+# STT_SAMPLE_RATE=16000
+
 RAG_FAISS_INDEX_PATH=data/chunked/faiss_index.bin
 RAG_CHUNKS_PATH=data/chunked/all_chunks.json
 RAG_METADATA_PATH=data/chunked/chunks_metadata.json
@@ -55,6 +63,18 @@ HOST=0.0.0.0
 PORT=8000
 OPEN_BROWSER=0
 ```
+
+Для другого OpenAI-compatible API поменяйте `BASE_URL` и `MODEL`.
+
+Голосовой ввод использует отдельный OpenAI-compatible endpoint для speech-to-text.
+Если `STT_API_KEY` не задан, сервер попробует использовать `OPENAI_API_KEY` или
+общий `API_KEY`; если `STT_BASE_URL` не задан, будет использован
+`OPENAI_BASE_URL`.
+
+При конфигурации Yandex (`BASE_URL=https://ai.api.cloud.yandex.net/v1` и заданные
+`API_KEY`/`FOLDER_ID`) голосовой ввод автоматически переключается на Yandex
+SpeechKit. Для принудительного выбора провайдера используйте
+`STT_PROVIDER=openai` или `STT_PROVIDER=yandex`.
 
 ## Запуск сайта
 

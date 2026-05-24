@@ -27,9 +27,18 @@
     <div class="chat-input-area">
         <div class="input-wrapper">
             <input type="text" id="messageInput" placeholder="Опишите клинический случай..." autocomplete="off"/>
+            <button class="voice-btn" id="voiceBtn" type="button" aria-label="Начать запись голоса" title="Начать запись">
+                <svg class="voice-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"></path>
+                    <path d="M19 11a7 7 0 0 1-14 0"></path>
+                    <path d="M12 18v3"></path>
+                    <path d="M8 21h8"></path>
+                </svg>
+            </button>
         </div>
         <button class="send-btn" id="sendBtn">➤</button>
     </div>
+    <div class="voice-status" id="voiceStatus" role="status" aria-live="polite"></div>
 </div>
 <script src="script.js"></script>
 </body>

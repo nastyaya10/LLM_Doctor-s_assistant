@@ -91,6 +91,9 @@ body {
     border-radius: 24px;
     padding: 4px 8px 4px 18px;
     border: 1px solid #dce5ed;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 .input-wrapper input {
     width: 100%;
@@ -100,6 +103,53 @@ body {
     font-size: 0.95rem;
     outline: none;
 }
+.voice-btn {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 50%;
+    background: #dcebf1;
+    color: #024b5e;
+    font-size: 17px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.voice-icon {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+.voice-icon-fill {
+    stroke: none;
+    fill: currentColor;
+}
+.voice-btn:hover { background: #c8e0e9; }
+.voice-btn.recording {
+    background: #c62828;
+    color: white;
+    animation: pulseRecord 1.2s infinite;
+}
+.voice-btn.transcribing,
+.voice-btn:disabled {
+    background: #b9cdd5;
+    color: white;
+    cursor: not-allowed;
+}
+.voice-status {
+    min-height: 18px;
+    padding: 0 24px 12px;
+    color: #546a77;
+    font-size: 0.82rem;
+    background: white;
+}
+.voice-status.error { color: #b3261e; }
 .send-btn {
     background: #024b5e;
     border: none;
@@ -129,4 +179,8 @@ body {
 @keyframes typingBounce {
     0%,60%,100% { transform: translateY(0); }
     30% { transform: translateY(-6px); }
+}
+@keyframes pulseRecord {
+    0%,100% { box-shadow: 0 0 0 0 rgba(198,40,40,0.35); }
+    50% { box-shadow: 0 0 0 7px rgba(198,40,40,0); }
 }
