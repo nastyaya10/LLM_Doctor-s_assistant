@@ -27,9 +27,11 @@
     <div class="chat-input-area">
         <div class="input-wrapper">
             <input type="text" id="messageInput" placeholder="Опишите клинический случай..." autocomplete="off"/>
+            <button class="voice-btn" id="voiceBtn" type="button" aria-label="Начать запись голоса" title="Начать запись">🎙️</button>
         </div>
         <button class="send-btn" id="sendBtn">➤</button>
     </div>
+    <div class="voice-status" id="voiceStatus" role="status" aria-live="polite"></div>
 </div>
 <script src="script.js"></script>
 </body>

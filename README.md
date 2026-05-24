@@ -41,6 +41,20 @@ FOLDER_ID=your_folder_id
 
 Для другого OpenAI-compatible API поменяйте `BASE_URL` и `MODEL`.
 
+Голосовой ввод использует отдельный OpenAI-compatible endpoint для speech-to-text:
+
+```env
+STT_API_KEY=your_openai_or_compatible_stt_key
+STT_BASE_URL=https://api.openai.com/v1
+STT_MODEL=whisper-1
+```
+
+Если `STT_API_KEY` не задан, сервер попробует использовать `OPENAI_API_KEY` или
+общий `API_KEY`; если `STT_BASE_URL` не задан, будет использован `OPENAI_BASE_URL`
+или `BASE_URL`. Для YandexGPT chat endpoint это обычно не подходит, поэтому для
+голосового ввода рекомендуется отдельный ключ/endpoint с поддержкой audio
+transcriptions.
+
 Настройки путей для RAG-ретривера, если база лежит не в стандартной папке `db/`:
 
 ```env
@@ -72,7 +86,7 @@ RAG_DB_DIR=/app/db
 ## Запуск сайта
 
 ```bash
-python main.py
+python src/api/main.py
 ```
 
 Сайт откроется на:
@@ -82,6 +96,11 @@ http://localhost:8000
 ```
 
 На сервере приложение слушает `HOST` и `PORT` из `.env`.
+
+Чтобы проверить голосовой ввод локально, откройте сайт в браузере, нажмите кнопку
+с микрофоном рядом с полем ввода, разрешите доступ к микрофону, произнесите
+запрос и нажмите кнопку еще раз для остановки записи. После распознавания текст
+появится в поле ввода, но не будет отправлен автоматически.
 
 ## Сборка локальной базы документов
 
