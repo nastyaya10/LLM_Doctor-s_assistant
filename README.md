@@ -50,10 +50,15 @@ STT_MODEL=whisper-1
 ```
 
 Если `STT_API_KEY` не задан, сервер попробует использовать `OPENAI_API_KEY` или
-общий `API_KEY`; если `STT_BASE_URL` не задан, будет использован `OPENAI_BASE_URL`
-или `BASE_URL`. Для YandexGPT chat endpoint это обычно не подходит, поэтому для
-голосового ввода рекомендуется отдельный ключ/endpoint с поддержкой audio
-transcriptions.
+общий `API_KEY`; если `STT_BASE_URL` не задан, будет использован
+`OPENAI_BASE_URL`. Для OpenAI-compatible провайдера можно явно задать
+`STT_PROVIDER=openai`.
+
+При конфигурации Yandex (`BASE_URL=https://ai.api.cloud.yandex.net/v1` и заданные
+`API_KEY`/`FOLDER_ID`) голосовой ввод автоматически переключается на Yandex
+SpeechKit. Язык можно настроить через `STT_LANG`, по умолчанию используется
+`ru-RU`, частота LPCM — `16000`. Для принудительного выбора провайдера
+используйте `STT_PROVIDER=openai` или `STT_PROVIDER=yandex`.
 
 Настройки путей для RAG-ретривера, если база лежит не в стандартной папке `db/`:
 

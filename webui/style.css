@@ -117,6 +117,19 @@ body {
     align-items: center;
     justify-content: center;
 }
+.voice-icon {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+.voice-icon-fill {
+    stroke: none;
+    fill: currentColor;
+}
 .voice-btn:hover { background: #c8e0e9; }
 .voice-btn.recording {
     background: #c62828;
