@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from dotenv import load_dotenv
 from src.services.prompt_loader import load_prompt
@@ -9,6 +10,15 @@ API_KEY = os.getenv("API_KEY")
 FOLDER_ID = os.getenv("FOLDER_ID")
 BASE_URL = os.getenv("BASE_URL")
 MODEL = os.getenv("MODEL")  # yandexgpt/rc
+
+SMALL_TALK_RE = re.compile(
+    r"^\s*(?:"
+    r"привет|здравствуй(?:те)?|добрый\s+(?:день|вечер|утро)|"
+    r"спасибо|благодарю|ок(?:ей)?|понял[аи]?|ясно|"
+    r"пока|до\s+свидания"
+    r")[!.,\s]*$",
+    re.IGNORECASE,
+)
 
 def _load_prompt_template() -> str:
     """Загружает шаблон промпта из файла или возвращает fallback."""
@@ -21,6 +31,8 @@ def need_rag(query: str, pseudo_answer: str = None) -> bool:
     False — достаточно ответа LLM без поиска.
     Решение принимает YandexGPT (промпт из файла + быстрый rule-based отсев).
     """
+    if SMALL_TALK_RE.match(query):
+        return False
 
     # Загружаем и форматируем промпт
     template = _load_prompt_template()

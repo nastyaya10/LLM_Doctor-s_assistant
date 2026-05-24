@@ -78,6 +78,65 @@ body {
 }
 .user .bubble { background: #024b5e; color: white; border-bottom-right-radius: 6px; }
 .assistant .bubble { background: white; border: 1px solid #e2eaf2; border-bottom-left-radius: 6px; }
+.assistant-rich {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    white-space: pre-wrap;
+}
+.answer-block {
+    color: #111827;
+}
+.sources-block,
+.debug-chunks {
+    border-top: 1px solid #e7eef5;
+    padding-top: 12px;
+    white-space: normal;
+}
+.section-title {
+    color: #024b5e;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+.sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 18px;
+    color: #405563;
+    font-size: 0.86rem;
+}
+.debug-chunks summary {
+    color: #024b5e;
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: 700;
+    list-style-position: inside;
+}
+.debug-chunk-card {
+    background: #f5f8fb;
+    border: 1px solid #dce7ef;
+    border-radius: 10px;
+    margin-top: 10px;
+    padding: 10px;
+}
+.debug-chunk-meta {
+    color: #546a77;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+.debug-chunk-text {
+    color: #1f2933;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    max-height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
 .chat-input-area {
     padding: 12px 18px 18px;
     background: white;

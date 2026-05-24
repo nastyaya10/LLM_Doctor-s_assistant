@@ -70,7 +70,7 @@ class ChatAPIHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 reply = f"Ошибка при обращении к модели: {str(e)}"
 
-            self.send_json({"reply": reply})
+            self.send_json(normalize_agent_reply(reply))
         elif self.path == '/api/transcribe':
             self.handle_transcribe()
         else:
@@ -149,6 +149,33 @@ def get_stt_provider() -> str:
         return "yandex"
 
     return "openai"
+
+
+def normalize_agent_reply(reply):
+    if not isinstance(reply, str):
+        return {"reply": str(reply), "sources": [], "debug_chunks": []}
+
+    try:
+        payload = json.loads(reply)
+    except json.JSONDecodeError:
+        return {"reply": reply, "sources": [], "debug_chunks": []}
+
+    if not isinstance(payload, dict):
+        return {"reply": reply, "sources": [], "debug_chunks": []}
+
+    answer = payload.get("answer")
+    if not isinstance(answer, str):
+        return {"reply": reply, "sources": [], "debug_chunks": []}
+
+    sources = payload.get("sources", [])
+    if not isinstance(sources, list):
+        sources = []
+
+    debug_chunks = payload.get("debug_chunks", [])
+    if not isinstance(debug_chunks, list):
+        debug_chunks = []
+
+    return {"reply": answer, "sources": sources, "debug_chunks": debug_chunks}
 
 
 def transcribe_audio_file(filename: str, audio_bytes: bytes, audio_format: str | None = None, sample_rate: str | None = None) -> str:

@@ -61,6 +61,111 @@
         return messageDiv;
     }
 
+    function createAssistantMessageElement(payload) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message assistant';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar-icon';
+        avatar.textContent = '🩺';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble assistant-rich';
+
+        const answerBlock = document.createElement('div');
+        answerBlock.className = 'answer-block';
+        renderInlineMarkdown(answerBlock, payload.reply || '');
+        bubble.appendChild(answerBlock);
+
+        const sources = Array.isArray(payload.sources) ? payload.sources : [];
+        if (sources.length > 0) {
+            bubble.appendChild(createSourcesBlock(sources));
+        }
+
+        const debugChunks = Array.isArray(payload.debug_chunks) ? payload.debug_chunks : [];
+        if (debugChunks.length > 0) {
+            bubble.appendChild(createDebugChunksBlock(debugChunks));
+        }
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(bubble);
+        return messageDiv;
+    }
+
+    function renderInlineMarkdown(container, text) {
+        container.textContent = '';
+        const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
+
+        parts.forEach((part) => {
+            if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                const strong = document.createElement('strong');
+                strong.textContent = part.slice(2, -2);
+                container.appendChild(strong);
+            } else if (part) {
+                container.appendChild(document.createTextNode(part));
+            }
+        });
+    }
+
+    function createSourcesBlock(sources) {
+        const section = document.createElement('div');
+        section.className = 'sources-block';
+
+        const title = document.createElement('div');
+        title.className = 'section-title';
+        title.textContent = 'Источники';
+        section.appendChild(title);
+
+        const list = document.createElement('ul');
+        list.className = 'sources-list';
+
+        sources.forEach((sourceItem) => {
+            const item = document.createElement('li');
+            item.textContent = sourceItem.source || 'Без названия';
+            list.appendChild(item);
+        });
+
+        section.appendChild(list);
+        return section;
+    }
+
+    function createDebugChunksBlock(chunks) {
+        const details = document.createElement('details');
+        details.className = 'debug-chunks';
+
+        const summary = document.createElement('summary');
+        summary.textContent = `Найденные чанки (${chunks.length})`;
+        details.appendChild(summary);
+
+        chunks.forEach((chunk) => {
+            const card = document.createElement('div');
+            card.className = 'debug-chunk-card';
+
+            const meta = document.createElement('div');
+            meta.className = 'debug-chunk-meta';
+            const scoreParts = [];
+            if (chunk.score !== null && chunk.score !== undefined) scoreParts.push(`score ${chunk.score}`);
+            if (chunk.rerank_score !== null && chunk.rerank_score !== undefined) scoreParts.push(`rerank ${chunk.rerank_score}`);
+            meta.textContent = [
+                `#${chunk.rank || '?'}`,
+                chunk.source || 'Без названия',
+                `global ${chunk.global_chunk_index ?? '?'}`,
+                `file ${chunk.file_chunk_index ?? '?'}`,
+                ...scoreParts,
+            ].join(' · ');
+
+            const text = document.createElement('div');
+            text.className = 'debug-chunk-text';
+            text.textContent = chunk.text || '';
+
+            card.appendChild(meta);
+            card.appendChild(text);
+            details.appendChild(card);
+        });
+
+        return details;
+    }
+
     function addTypingIndicator() {
         const typingDiv = document.createElement('div');
         typingDiv.className = 'message assistant';
@@ -136,8 +241,7 @@
             })
         });
         if (!response.ok) throw new Error('Ошибка сервера');
-        const data = await response.json();
-        return data.reply;
+        return response.json();
     }
 
     async function getSttConfig() {
@@ -413,9 +517,9 @@
         addTypingIndicator();
 
         try {
-            const reply = await getAIResponse(trimmed);
+            const payload = await getAIResponse(trimmed);
             removeTypingIndicator();
-            const assistantMsg = createMessageElement('assistant', reply);
+            const assistantMsg = createAssistantMessageElement(payload);
             messagesContainer.appendChild(assistantMsg);
             scrollToBottom();
         } catch (error) {
